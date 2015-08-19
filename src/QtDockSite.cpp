@@ -678,13 +678,13 @@ void DockSite::mouseMoveEvent(QMouseEvent* evt)
         flexWidget->setGeometry(QRect(pos + tl - impl->_startPoint, dimension - QSize(tl.x(), tl.y()) - QSize(br.x(), br.y())));
         flexWidget->show();
 
+        impl->_startDrag = false;
+
         QApplication::sendPostedEvents();
 
 #ifdef Q_OS_WIN
         SendMessage((HWND)flexWidget->effectiveWinId(), WM_NCLBUTTONDOWN, HTCAPTION, MAKELONG(pos.x(), pos.y()));
 #endif
-
-        impl->_startDrag = false;
     }
 }
 
