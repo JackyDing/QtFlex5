@@ -525,6 +525,8 @@ bool DockSite::eventFilter(QObject* obj, QEvent* evt)
                     return QWidget::eventFilter(obj, evt);
                 }
 
+                auto pos = QCursor::pos();
+
                 QApplication::sendEvent(impl->_tabBar, &QMouseEvent(QEvent::MouseButtonRelease, mouse->pos(), Qt::LeftButton, mouse->buttons(), mouse->modifiers()));
 
                 auto dimension = size();
@@ -537,7 +539,6 @@ bool DockSite::eventFilter(QObject* obj, QEvent* evt)
 
                 flexWidget->addDockSite(new DockSite(dockWidget), Flex::M, -1);
 
-                auto pos = QCursor::pos();
                 auto tl = flexWidget->geometry().topLeft() - flexWidget->frameGeometry().topLeft();
                 auto br = flexWidget->frameGeometry().bottomRight() - flexWidget->geometry().bottomRight();
                 flexWidget->setGeometry(QRect(pos + tl - impl->_startPoint, dimension - QSize(tl.x(), tl.y()) - QSize(br.x(), br.y())));
@@ -548,7 +549,6 @@ bool DockSite::eventFilter(QObject* obj, QEvent* evt)
                 QApplication::sendPostedEvents();
 
 #ifdef Q_OS_WIN
-                SendMessage((HWND)effectiveWinId(), WM_LBUTTONUP, 0, MAKELONG(pos.x(), pos.y()));
                 SendMessage((HWND)flexWidget->effectiveWinId(), WM_NCLBUTTONDOWN, HTCAPTION, MAKELONG(pos.x(), pos.y()));
 #endif
                 return true;
@@ -661,13 +661,18 @@ void DockSite::mouseMoveEvent(QMouseEvent* evt)
             return;
         }
 
+        auto pos = QCursor::pos();
+
+#ifdef Q_OS_WIN
+        SendMessage((HWND)effectiveWinId(), WM_LBUTTONUP, 0, MAKELONG(pos.x(), pos.y()));
+#endif
+
         auto dimension = size();
 
         auto flexWidget = FlexManager::instance()->createFlexWidget(viewMode(), Flex::parent(viewMode()), Flex::windowFlags());
         
         flexWidget->addDockSite(this, Flex::M, -1);
 
-        auto pos = QCursor::pos();
         auto tl = flexWidget->geometry().topLeft() - flexWidget->frameGeometry().topLeft();
         auto br = flexWidget->frameGeometry().bottomRight() - flexWidget->geometry().bottomRight();
         flexWidget->setGeometry(QRect(pos + tl - impl->_startPoint, dimension - QSize(tl.x(), tl.y()) - QSize(br.x(), br.y())));
@@ -676,7 +681,6 @@ void DockSite::mouseMoveEvent(QMouseEvent* evt)
         QApplication::sendPostedEvents();
 
 #ifdef Q_OS_WIN
-        SendMessage((HWND)effectiveWinId(), WM_LBUTTONUP, 0, MAKELONG(pos.x(), pos.y()));
         SendMessage((HWND)flexWidget->effectiveWinId(), WM_NCLBUTTONDOWN, HTCAPTION, MAKELONG(pos.x(), pos.y()));
 #endif
 
