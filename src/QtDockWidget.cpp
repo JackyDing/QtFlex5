@@ -103,6 +103,8 @@ void DockWidgetImpl::update(DockWidget* self)
             _helper->button(Flex::AutoHide)->hide();
             _titleBarHeight = self->style()->pixelMetric(QStyle::PM_TitleBarHeight, nullptr, self) - 4;
             break;
+        default:
+            break;
         }
 
         _helper->setWindowInfo(_titleBarHeight, Flex::windowFlags(_viewMode));
@@ -278,6 +280,8 @@ void DockWidget::on_titleBar_buttonClicked(Flex::Button button, bool*)
     case Flex::AutoHide:
         break;
     case Flex::DockShow:
+        break;
+    default:
         break;
     }
 }

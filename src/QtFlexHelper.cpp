@@ -19,6 +19,10 @@
 #include <qt_windows.h>
 #endif
 
+#ifdef Q_OS_MAC
+#include <private/qwidgetresizehandler_p.h>
+#endif
+
 class FlexButton : public QToolButton
 {
 public:
@@ -429,26 +433,44 @@ public:
     FlexHelperImplMac()
     {
     }
+public:
+    QWidgetResizeHandler* _handler = nullptr;
 };
 
 #endif
 
 #ifdef Q_OS_WIN
 FlexHelper::FlexHelper(QWidget* parent) : QObject(parent), impl(new FlexHelperImplWin)
-#endif
-#ifdef Q_OS_MAC
-FlexHelper::FlexHelper(QWidget* parent) : QObject(parent), impl(new FlexHelperImplMac)
-#endif
 {
-    impl->_buttons = new FlexButtons(parent, parent);
-    impl->_extents = new FlexExtents(parent, parent);
-    connect(impl->_extents->_dockPullButton, SIGNAL(clicked()), SLOT(on_button_clicked()));
-    connect(impl->_extents->_autoHideButton, SIGNAL(clicked()), SLOT(on_button_clicked()));
-    connect(impl->_buttons->_clsButton, SIGNAL(clicked()), SLOT(on_button_clicked()));
-    connect(impl->_buttons->_maxButton, SIGNAL(clicked()), SLOT(on_button_clicked()));
-    connect(impl->_buttons->_minButton, SIGNAL(clicked()), SLOT(on_button_clicked()));
+    auto d = static_cast<FlexHelperImplWin*>(impl.data());
+    d->_buttons = new FlexButtons(parent, parent);
+    d->_extents = new FlexExtents(parent, parent);
+    connect(d->_extents->_dockPullButton, SIGNAL(clicked()), SLOT(on_button_clicked()));
+    connect(d->_extents->_autoHideButton, SIGNAL(clicked()), SLOT(on_button_clicked()));
+    connect(d->_buttons->_clsButton, SIGNAL(clicked()), SLOT(on_button_clicked()));
+    connect(d->_buttons->_maxButton, SIGNAL(clicked()), SLOT(on_button_clicked()));
+    connect(d->_buttons->_minButton, SIGNAL(clicked()), SLOT(on_button_clicked()));
     parent->installEventFilter(this);
 }
+
+#endif
+
+#ifdef Q_OS_MAC
+FlexHelper::FlexHelper(QWidget* parent) : QObject(parent), impl(new FlexHelperImplMac)
+{
+    auto d = static_cast<FlexHelperImplMac*>(impl.data());
+    d->_handler = new QWidgetResizeHandler(parent);
+    d->_buttons = new FlexButtons(parent, parent);
+    d->_extents = new FlexExtents(parent, parent);
+    connect(d->_extents->_dockPullButton, SIGNAL(clicked()), SLOT(on_button_clicked()));
+    connect(d->_extents->_autoHideButton, SIGNAL(clicked()), SLOT(on_button_clicked()));
+    connect(d->_buttons->_clsButton, SIGNAL(clicked()), SLOT(on_button_clicked()));
+    connect(d->_buttons->_maxButton, SIGNAL(clicked()), SLOT(on_button_clicked()));
+    connect(d->_buttons->_minButton, SIGNAL(clicked()), SLOT(on_button_clicked()));
+    parent->installEventFilter(this);
+}
+#endif
+
 
 FlexHelper::~FlexHelper()
 {
@@ -505,10 +527,18 @@ void FlexHelper::setWindowInfo(int titleBarHeight, Qt::WindowFlags windowFlags)
 
 bool FlexHelper::eventFilter(QObject* obj, QEvent* evt)
 {
+#ifdef Q_OS_WIN
     auto hwnd = qobject_cast<QWidget*>(obj)->internalWinId();
-
+#endif
 #ifdef Q_OS_WIN
     auto d = static_cast<FlexHelperImplWin*>(impl.data());
+#endif
+
+#ifdef Q_OS_MAC
+    auto widget = qobject_cast<QWidget*>(obj);
+#endif
+#ifdef Q_OS_MAC
+    auto d = static_cast<FlexHelperImplMac*>(impl.data());
 #endif
 
     if (evt->type() == QEvent::WinIdChange)
@@ -543,9 +573,34 @@ bool FlexHelper::eventFilter(QObject* obj, QEvent* evt)
         impl->_extents->setGeometry(QRect(QPoint(w - bw - ew - 6, ey), extentsSize));
     }
 #ifndef Q_OS_WIN
+    else if (evt->type() == QEvent::Resize)
+    {
+        if (d->_handler != nullptr)
+        {
+            
+        }
+    }
+    else if (evt->type() == QEvent::Move)
+    {
+        if (d->_handler != nullptr)
+        {
+
+        }
+    }
     else if (evt->type() == QEvent::WindowStateChange)
     {
-        auto tmp = static_cast<QWindowStateChangeEvent*>(evt);
+        auto state = widget->windowState();
+        
+        if (state & Qt::WindowMaximized)
+        {
+            d->_buttons->maxButton()->setButton(Flex::Restore);
+            d->_buttons->maxButton()->setToolTip(QWidget::tr("Restore"));
+        }
+        else
+        {
+            d->_buttons->maxButton()->setToolTip(QWidget::tr("Maximize"));
+            d->_buttons->maxButton()->setButton(Flex::Maximize);
+        }
     }
 #endif
     return false;
@@ -1032,6 +1087,8 @@ void FlexHelper::on_button_clicked()
                 window->close();
 #endif
             }
+            break;
+        default:
             break;
         }
     }

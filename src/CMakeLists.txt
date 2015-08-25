@@ -1,5 +1,7 @@
 CMAKE_MINIMUM_REQUIRED(VERSION 2.8.11 FATAL_ERROR)
 
+set(CMAKE_MACOSX_RPATH 1)
+
 SET(CMAKE_AUTOMOC ON)
 SET(CMAKE_AUTOUIC ON)
 SET(CMAKE_AUTORCC ON)
@@ -11,7 +13,7 @@ FIND_PACKAGE(Qt5Core REQUIRED)
 FIND_PACKAGE(Qt5Gui REQUIRED)
 FIND_PACKAGE(Qt5Widgets REQUIRED)
 
-INCLUDE_DIRECTORIES(${Qt5Gui_PRIVATE_INCLUDE_DIRS})
+INCLUDE_DIRECTORIES(${Qt5Gui_PRIVATE_INCLUDE_DIRS} ${Qt5Widgets_PRIVATE_INCLUDE_DIRS})
 
 SET(HEADER_FILES QtDockGuider.h
                  QtDockSide.h
@@ -20,8 +22,7 @@ SET(HEADER_FILES QtDockGuider.h
                  QtFlexHelper.h
                  QtFlexManager.h
                  QtFlexStyle.h
-                 QtFlexWidget.h
-   )
+                 QtFlexWidget.h)
 
 SET(SOURCE_FILES QtDockGuider.cpp
                  QtDockSide.cpp
@@ -31,14 +32,13 @@ SET(SOURCE_FILES QtDockGuider.cpp
                  QtFlexManager.cpp
                  QtFlexStyle.cpp
                  QtFlexWidget.cpp
-                 QtFlex.qrc
-   )
+                 QtFlex.qrc)
 
 ADD_LIBRARY(Qt5Flex SHARED ${HEADER_FILES} ${SOURCE_FILES})
 
 TARGET_LINK_LIBRARIES(Qt5Flex Qt5::Core Qt5::Gui Qt5::Widgets)
 
-set_target_properties(Qt5Flex PROPERTIES DEBUG_POSTFIX d)
+SET_TARGET_PROPERTIES(Qt5Flex PROPERTIES DEBUG_POSTFIX d)
 
 INSTALL(TARGETS Qt5Flex
         RUNTIME DESTINATION bin

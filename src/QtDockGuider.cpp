@@ -77,7 +77,7 @@ namespace
 class DockGuiderImpl
 {
 public:
-    DockGuiderImpl() : _area(Flex::None), _siteIndex(-1), _guidersIndex(0)
+    DockGuiderImpl()
     {
     }
 
@@ -89,8 +89,8 @@ public:
     Flex::ViewMode _viewMode;
     QList<QRect> _siteRects;
     QList<Flex::ViewMode> _viewModes;
-    int _siteIndex;
-    int _guidersIndex;
+    int _siteIndex = -1;
+    int _guidersIndex = 0;
     bool _lGuiderVisible[3];
     bool _tGuiderVisible[3];
     bool _rGuiderVisible[3];
@@ -101,7 +101,7 @@ public:
     QRect _rGuiderRect[3];
     QRect _bGuiderRect[3];
     QRect _mGuiderRect;
-    Flex::DockArea _area;
+    Flex::DockArea _area = Flex::None;
 
 public:
     static DockGuider* _instance;
@@ -255,6 +255,8 @@ void DockGuider::paintEvent(QPaintEvent*)
         break;
     case Flex::B2:
         painter.fillRect(x, y + h / 2, w, h / 2, background);
+        break;
+    default:
         break;
     }
 

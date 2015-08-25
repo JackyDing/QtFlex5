@@ -147,6 +147,8 @@ void DockSiteImpl::update(DockSite* self, Flex::DockMode dockMode)
             _helper->change(Flex::AutoHide, Flex::DockShow);
         }
         break;
+    default:
+        break;
     }
 
     if (tempWidget)
@@ -555,6 +557,8 @@ bool DockSite::eventFilter(QObject* obj, QEvent* evt)
                 return true;
             }
             break;
+        default:
+            break;
         }
         }
     }
@@ -862,6 +866,8 @@ void DockSite::on_titleBar_buttonClicked(Flex::Button button, bool *accepted)
         break;
     case Flex::DockPull:
         flexWidget()->showSiteDockPull(this);
+        break;
+    default:
         break;
     }
 

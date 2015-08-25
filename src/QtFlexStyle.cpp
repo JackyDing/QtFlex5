@@ -88,10 +88,14 @@ void FlexStyle::drawPrimitive(PrimitiveElement pe, const QStyleOption *opt, QPai
                 p->setPen(QPen(QColor("#8692B1"), 0));
                 p->drawLine(tbb->rect.left(), tbb->rect.top() + 0, tbb->rect.right(), tbb->rect.top() + 0);
                 break;
+            default:
+                break;
             }
             p->restore();
         }
         return;
+    default:
+        break;
     }
     QProxyStyle::drawPrimitive(pe, opt, p, w);
 }
@@ -120,6 +124,8 @@ void FlexStyle::drawControl(ControlElement ce, const QStyleOption *opt, QPainter
                 break;
             case QTabBar::RoundedSouth:
                 rect.adjust(0, highlight ? -1 : 1, 0, highlight ? -1 : 1);
+                break;
+            default:
                 break;
             }
 
@@ -174,6 +180,8 @@ void FlexStyle::drawControl(ControlElement ce, const QStyleOption *opt, QPainter
             return;
         }
         break;
+    default:
+        break;
     }
     QProxyStyle::drawControl(ce, opt, p, w);
 }
@@ -200,6 +208,8 @@ int FlexStyle::pixelMetric(PixelMetric pm, const QStyleOption *opt, const QWidge
             break;
         }
         return 8;
+    default:
+        break;
     }
     return QProxyStyle::pixelMetric(pm, opt, w);
 }

@@ -72,6 +72,8 @@ DockSide::DockSide(Flex::Direction direction, QWidget* parent) : QWidget(parent)
     case Flex::B:
         setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
         break;
+    default:
+        break;
     }
 }
 
@@ -183,6 +185,8 @@ void DockSide::paintEvent(QPaintEvent*)
         pw = dim.width();
         ph = dim.height();
         break;
+    default:
+        break;
     }
 
     QPixmap pixmap(pw, ph);
@@ -210,6 +214,8 @@ void DockSide::paintEvent(QPaintEvent*)
         case Flex::R:
             pixmapPainter.fillRect(offset, 0, dockRect.width(), 6, impl->_over == i ? QColor("#9BA7B7") : QColor("#465A7D"));
             pixmapPainter.drawText(offset, ph - dockRect.height(), dockText);
+            break;
+        default:
             break;
         }
         offset += dockRect.width() + impl->_space;
