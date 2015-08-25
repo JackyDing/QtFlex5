@@ -38,13 +38,13 @@
     <ClCompile Include="QtGuider.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="GeneratedFiles\Debug\moc_QtGuider.cpp">
+    <ClCompile Include="..\..\build\moc\Debug\moc_QtGuider.cpp">
       <Filter>Generated Files\Debug</Filter>
     </ClCompile>
-    <ClCompile Include="GeneratedFiles\Release\moc_QtGuider.cpp">
+    <ClCompile Include="..\..\build\moc\Release\moc_QtGuider.cpp">
       <Filter>Generated Files\Release</Filter>
     </ClCompile>
-    <ClCompile Include="GeneratedFiles\qrc_QtGuider.cpp">
+    <ClCompile Include="..\..\build\moc\qrc_QtGuider.cpp">
       <Filter>Generated Files</Filter>
     </ClCompile>
     <ClCompile Include="main.cpp">
@@ -63,7 +63,7 @@
     </CustomBuild>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="GeneratedFiles\ui_QtGuider.h">
+    <ClInclude Include="..\..\build\moc\ui_QtGuider.h">
       <Filter>Generated Files</Filter>
     </ClInclude>
   </ItemGroup>

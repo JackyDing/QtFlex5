@@ -182,6 +182,12 @@ int FlexStyle::pixelMetric(PixelMetric pm, const QStyleOption *opt, const QWidge
 {
     switch (pm)
     {
+    case PM_TitleBarHeight:
+        if (!w || !w->property("Flex").isValid())
+        {
+            break;
+        }
+        return 27;
     case PM_TabBarTabShiftVertical:
         if (!w || !w->property("Flex").isValid())
         {

@@ -57,40 +57,40 @@
     </CustomBuild>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\moc\Debug\moc_QtDockSite.cpp">
+    <ClCompile Include="..\build\moc\Debug\moc_QtDockSite.cpp">
       <Filter>Generated Files\Debug</Filter>
     </ClCompile>
-    <ClCompile Include="..\moc\Release\moc_QtDockSite.cpp">
+    <ClCompile Include="..\build\moc\Release\moc_QtDockSite.cpp">
       <Filter>Generated Files\Release</Filter>
     </ClCompile>
     <ClCompile Include="QtDockWidget.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\moc\Debug\moc_QtDockWidget.cpp">
+    <ClCompile Include="..\build\moc\Debug\moc_QtDockWidget.cpp">
       <Filter>Generated Files\Debug</Filter>
     </ClCompile>
-    <ClCompile Include="..\moc\Release\moc_QtDockWidget.cpp">
+    <ClCompile Include="..\build\moc\Release\moc_QtDockWidget.cpp">
       <Filter>Generated Files\Release</Filter>
     </ClCompile>
-    <ClCompile Include="..\moc\qrc_QtFlex.cpp">
+    <ClCompile Include="..\build\moc\qrc_QtFlex.cpp">
       <Filter>Generated Files</Filter>
     </ClCompile>
     <ClCompile Include="QtFlexHelper.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\moc\Debug\moc_QtFlexHelper.cpp">
+    <ClCompile Include="..\build\moc\Debug\moc_QtFlexHelper.cpp">
       <Filter>Generated Files\Debug</Filter>
     </ClCompile>
-    <ClCompile Include="..\moc\Release\moc_QtFlexHelper.cpp">
+    <ClCompile Include="..\build\moc\Release\moc_QtFlexHelper.cpp">
       <Filter>Generated Files\Release</Filter>
     </ClCompile>
     <ClCompile Include="QtFlexManager.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\moc\Debug\moc_QtFlexManager.cpp">
+    <ClCompile Include="..\build\moc\Debug\moc_QtFlexManager.cpp">
       <Filter>Generated Files\Debug</Filter>
     </ClCompile>
-    <ClCompile Include="..\moc\Release\moc_QtFlexManager.cpp">
+    <ClCompile Include="..\build\moc\Release\moc_QtFlexManager.cpp">
       <Filter>Generated Files\Release</Filter>
     </ClCompile>
     <ClCompile Include="QtFlexStyle.cpp">
@@ -99,28 +99,28 @@
     <ClCompile Include="QtFlexWidget.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\moc\Debug\moc_QtFlexWidget.cpp">
+    <ClCompile Include="..\build\moc\Debug\moc_QtFlexWidget.cpp">
       <Filter>Generated Files\Debug</Filter>
     </ClCompile>
-    <ClCompile Include="..\moc\Release\moc_QtFlexWidget.cpp">
+    <ClCompile Include="..\build\moc\Release\moc_QtFlexWidget.cpp">
       <Filter>Generated Files\Release</Filter>
     </ClCompile>
     <ClCompile Include="QtDockGuider.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\moc\Debug\moc_QtDockGuider.cpp">
+    <ClCompile Include="..\build\moc\Debug\moc_QtDockGuider.cpp">
       <Filter>Generated Files\Debug</Filter>
     </ClCompile>
-    <ClCompile Include="..\moc\Release\moc_QtDockGuider.cpp">
+    <ClCompile Include="..\build\moc\Release\moc_QtDockGuider.cpp">
       <Filter>Generated Files\Release</Filter>
     </ClCompile>
     <ClCompile Include="QtDockSide.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\moc\Debug\moc_QtDockSide.cpp">
+    <ClCompile Include="..\build\moc\Debug\moc_QtDockSide.cpp">
       <Filter>Generated Files\Debug</Filter>
     </ClCompile>
-    <ClCompile Include="..\moc\Release\moc_QtDockSide.cpp">
+    <ClCompile Include="..\build\moc\Release\moc_QtDockSide.cpp">
       <Filter>Generated Files\Release</Filter>
     </ClCompile>
     <ClCompile Include="QtDockSite.cpp">
