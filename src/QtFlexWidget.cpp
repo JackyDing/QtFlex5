@@ -32,7 +32,7 @@
 class FlexWidgetImpl
 {
 public:
-    FlexWidgetImpl() : _guider(nullptr), _viewMode(Flex::HybridView), _adjusting(false), _helper(nullptr), _titleBarHeight(23)
+    FlexWidgetImpl()
     {
         _sides[0] = nullptr;
         _sides[1] = nullptr;
@@ -59,7 +59,7 @@ public:
     bool isTitleBarVisible(FlexWidget* self, QRect* rect = nullptr) const;
 
 public:
-    int _titleBarHeight;
+    int _titleBarHeight = 23;
     int _frameWidth;
     Qt::WindowFlags _windowFlags;
     DockSide* _sides[4];
@@ -69,9 +69,9 @@ public:
     QWidget* _hole = nullptr;
     QSplitter* _siteContainer = nullptr;
     QSplitter* _sideContainer = nullptr;
-    FlexHelper* _helper;
+    FlexHelper* _helper = nullptr;
     QPoint _startPoint;
-    Flex::ViewMode _viewMode;
+    Flex::ViewMode _viewMode = Flex::HybridView;
     bool _adjusting = false;
     bool _reserving = false;
 };
@@ -153,9 +153,11 @@ void FlexWidgetImpl::updateViewMode(FlexWidget* self, Flex::ViewMode viewMode, b
         }
     }
 
+    QEvent event((QEvent::Type)Flex::Update);
+
     for (auto site : _sites)
     {
-        QApplication::sendEvent(site, &QEvent((QEvent::Type)Flex::Update));
+        QApplication::sendEvent(site, &event);
     }
 
     if (_viewMode != prevViewMode)
@@ -925,7 +927,7 @@ void FlexWidget::paintEvent(QPaintEvent*)
             titleOption.icon.paint(&painter, 10, (impl->_titleBarHeight - 24) / 2, 24, 24, Qt::AlignCenter, QIcon::Active, isActive() ? QIcon::On : QIcon::Off);
         }
 
-        painter.drawText(lr.x() + (hasIcon ? 6 : 0), (impl->_titleBarHeight - lr.height()) / 2 + 1, lr.width() - 2, lr.height(), Qt::AlignLeft | Qt::AlignVCenter | Qt::TextSingleLine, titleOption.text);
+        painter.drawText(8 + (hasIcon ? 32 : 0), (impl->_titleBarHeight - lr.height()) / 2 + 1, lr.width() - 2, lr.height(), Qt::AlignLeft | Qt::AlignVCenter | Qt::TextSingleLine, titleOption.text);
 
         QStyleOptionFrame frameOption;
         frameOption.initFrom(this);
@@ -1306,9 +1308,11 @@ bool FlexWidget::addDockWidget(DockWidget* widget, Flex::DockArea area, int site
 
     bool result = impl->_sites[siteIndex]->addWidget(widget);
 
+    QEvent event((QEvent::Type)Flex::Update);
+
     for (auto site : impl->_sites)
     {
-        QApplication::sendEvent(site, &QEvent((QEvent::Type)Flex::Update));
+        QApplication::sendEvent(site, &event);
     }
 
     impl->_sites[siteIndex]->setFocus();
@@ -1709,6 +1713,8 @@ void FlexWidget::on_side_currentChanged(DockSide* side, DockSite* prev, DockSite
             impl->_sideContainer->setStretchFactor(0, 1);
             impl->_sideContainer->setStretchFactor(1, 0);
             impl->_sideContainer->setSizes(QList<int>() << 10 << curr->baseSize().height());
+            break;
+        default:
             break;
         }
 

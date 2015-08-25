@@ -14,12 +14,14 @@ CONFIG(debug, debug|release) {
 
 TEMPLATE = lib
 
+QMAKE_CXXFLAGS += -std=c++11 -stdlib=libc++
+
 DEFINES += QT_FLEX_BUILD
 
-INCLUDEPATH += "..\..\..\..\libs\Qt\5.5.0\5.5\msvc2013_64\include\QtCore\5.5.0\QtCore"
-INCLUDEPATH += "..\..\..\..\libs\Qt\5.5.0\5.5\msvc2013_64\include\QtGui\5.5.0\QtGui"
-INCLUDEPATH += "..\..\..\..\libs\Qt\5.5.0\5.5\msvc2013_64\include\QtWidgets\5.5.0\QtWidgets"
-INCLUDEPATH += "..\..\..\..\libs\Qt\5.5.0\5.5\msvc2013_64\include\QtWidgets"
+INCLUDEPATH += "../../../../libs/Qt/5.5.0/5.5/msvc2013_64/include/QtCore/5.5.0/QtCore"
+INCLUDEPATH += "../../../../libs/Qt/5.5.0/5.5/msvc2013_64/include/QtGui/5.5.0/QtGui"
+INCLUDEPATH += "../../../../libs/Qt/5.5.0/5.5/msvc2013_64/include/QtWidgets/ß5.5.0/QtWidgets"
+INCLUDEPATH += "../../../../libs/Qt/5.5.0/5.5/msvc2013_64/include/QtWidgets"
 
 SOURCES += \
     QtDockGuider.cpp \

@@ -10,9 +10,10 @@
 #include <QtWidgets/QHBoxLayout>
 #include <QtWidgets/QVBoxLayout>
 #include <QtWidgets/QApplication>
-#include <qpa/qplatformnativeinterface.h>
 
-Q_DECLARE_METATYPE(QMargins)
+#ifdef Q_OS_WIN
+#include <qpa/qplatformnativeinterface.h>
+#endif
 
 #ifdef Q_OS_WIN
 #include <qt_windows.h>
@@ -154,9 +155,6 @@ public:
     }
 
 public:
-    static LRESULT WINAPI keyEvent(int nCode, WPARAM wParam, LPARAM lParam);
-
-public:
     bool _moving = false;
 
     Qt::WindowFlags _windowFlags;
@@ -208,6 +206,9 @@ public:
     BOOL modifyStyle(HWND hwnd, DWORD rsStyle, DWORD asStyle, UINT nFlags);
 
 public:
+    static LRESULT WINAPI keyEvent(int nCode, WPARAM wParam, LPARAM lParam);
+
+public:
     BOOL _dwmAllowed = TRUE;
     BOOL _dwmEnabled = TRUE;
 
@@ -226,6 +227,8 @@ public:
 };
 
 HHOOK FlexHelperImplWin::_hook;
+
+Q_DECLARE_METATYPE(QMargins)
 
 void FlexHelperImplWin::notifyFrame(HWND hwnd)
 {
@@ -418,7 +421,24 @@ BOOL FlexHelperImplWin::modifyStyle(HWND hwnd, DWORD rsStyle, DWORD asStyle, UIN
 
 #endif
 
+#ifdef Q_OS_MAC
+
+class FlexHelperImplMac : public FlexHelperImpl
+{
+public:
+    FlexHelperImplMac()
+    {
+    }
+};
+
+#endif
+
+#ifdef Q_OS_WIN
 FlexHelper::FlexHelper(QWidget* parent) : QObject(parent), impl(new FlexHelperImplWin)
+#endif
+#ifdef Q_OS_MAC
+FlexHelper::FlexHelper(QWidget* parent) : QObject(parent), impl(new FlexHelperImplMac)
+#endif
 {
     impl->_buttons = new FlexButtons(parent, parent);
     impl->_extents = new FlexExtents(parent, parent);
@@ -522,13 +542,18 @@ bool FlexHelper::eventFilter(QObject* obj, QEvent* evt)
         impl->_buttons->setGeometry(QRect(QPoint(w - bw - aw - 5, by), buttonsSize));
         impl->_extents->setGeometry(QRect(QPoint(w - bw - ew - 6, ey), extentsSize));
     }
-
+#ifndef Q_OS_WIN
+    else if (evt->type() == QEvent::WindowStateChange)
+    {
+        auto tmp = static_cast<QWindowStateChangeEvent*>(evt);
+    }
+#endif
     return false;
 }
 
 #ifdef Q_OS_WIN
 
-LRESULT WINAPI FlexHelperImpl::keyEvent(int nCode, WPARAM wParam, LPARAM lParam)
+LRESULT WINAPI FlexHelperImplWin::keyEvent(int nCode, WPARAM wParam, LPARAM lParam)
 {
     if (nCode < 0)
     {
@@ -591,7 +616,7 @@ bool FlexHelper::nativeEvent(const QByteArray&, void* event, long* result)
             QMetaObject::invokeMethod(object, "enterMove", Q_ARG(QObject*, object));
             if (FlexHelperImplWin::_hook == nullptr)
             {
-                FlexHelperImplWin::_hook = SetWindowsHookEx(WH_KEYBOARD, FlexHelperImpl::keyEvent, NULL, GetCurrentThreadId());
+                FlexHelperImplWin::_hook = SetWindowsHookEx(WH_KEYBOARD, FlexHelperImplWin::keyEvent, NULL, GetCurrentThreadId());
             }
         }
         QApplication::sendPostedEvents(nullptr, QEvent::DeferredDelete);
@@ -973,6 +998,8 @@ void FlexHelper::on_button_clicked()
             {
 #ifdef Q_OS_WIN
                 ::SendMessage(reinterpret_cast<HWND>(window->internalWinId()), WM_SYSCOMMAND, SC_MINIMIZE, 0);
+#else
+                window->showMinimized();
 #endif
             }
             break;
@@ -981,6 +1008,8 @@ void FlexHelper::on_button_clicked()
             {
 #ifdef Q_OS_WIN
                 SendMessage(reinterpret_cast<HWND>(window->internalWinId()), WM_SYSCOMMAND, SC_MAXIMIZE, 0);
+#else
+                window->showMaximized();
 #endif
             }
             break;
@@ -989,6 +1018,8 @@ void FlexHelper::on_button_clicked()
             {
 #ifdef Q_OS_WIN
                 SendMessage(reinterpret_cast<HWND>(window->internalWinId()), WM_SYSCOMMAND, SC_RESTORE, 0);
+#else
+                window->showNormal();
 #endif
             }
             break;
@@ -997,6 +1028,8 @@ void FlexHelper::on_button_clicked()
             {
 #ifdef Q_OS_WIN
                 SendMessage(reinterpret_cast<HWND>(window->internalWinId()), WM_SYSCOMMAND, SC_CLOSE, 0);
+#else
+                window->close();
 #endif
             }
             break;

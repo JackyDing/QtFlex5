@@ -2,6 +2,7 @@
 #include "QtFlexWidget.h"
 #include "QtDockWidget.h"
 #include "QtDockSite.h"
+#include <QtCore/QAbstractNativeEventFilter>
 #include <QtCore/QVariant>
 #include <QtGui/QIcon>
 #include <QtWidgets/QApplication>
@@ -14,7 +15,7 @@ int Flex::Update = QEvent::registerEventType();
 
 WId topLevelWindowAt(QWidget* widget, const QPoint& pos)
 {
-    WId hTmp = NULL;
+    WId hTmp = 0;
 #ifdef Q_OS_WIN
     HWND hWnd = GetWindow(reinterpret_cast<HWND>(widget->effectiveWinId()), GW_HWNDNEXT);
 
@@ -43,18 +44,27 @@ DockSite* getDockSite(QWidget* widget)
     return nullptr;
 }
 
-class FlexManagerImpl
+class FlexManagerImpl : public QAbstractNativeEventFilter
 {
 public:
     FlexManagerImpl() : _ready(false)
     {
     }
+
+public:
+    bool nativeEventFilter(const QByteArray &eventType, void *message, long *result);
+
 public:
     QList<FlexWidget*> _flexWidgets;
     QList<DockWidget*> _dockWidgets;
     bool _ready;
     QList<QIcon> _buttonIcons;
 };
+
+bool FlexManagerImpl::nativeEventFilter(const QByteArray &eventType, void *message, long *result)
+{
+    return false;
+}
 
 FlexManager::FlexManager() : impl(new FlexManagerImpl)
 {
@@ -84,6 +94,7 @@ FlexManager::FlexManager() : impl(new FlexManagerImpl)
         impl->_buttonIcons.append(icon);
     }
     
+    qApp->installNativeEventFilter(impl.data());
 }
 
 FlexManager::~FlexManager()

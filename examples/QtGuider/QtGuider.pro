@@ -4,13 +4,15 @@
 #
 #-------------------------------------------------
 
-QT       += core gui
+QT += core gui
 
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
 TARGET = QtGuider
+
 TEMPLATE = app
 
+QMAKE_CXXFLAGS += -std=c++11 -stdlib=libc++
 
 SOURCES += \
     ./main.cpp \
@@ -27,7 +29,8 @@ RESOURCES += \
 
 win32:CONFIG(release, debug|release): LIBS += -L$$OUT_PWD/../../src/release/ -lQt5Flex
 else:win32:CONFIG(debug, debug|release): LIBS += -L$$OUT_PWD/../../src/debug/ -lQt5Flexd
-else:unix: LIBS += -L$$OUT_PWD/../../src/ -lQtFlex5
+else:unix:CONFIG(release,debug|release): LIBS += -L$$OUT_PWD/../../src/ -lQt5Flex
+else:unix:CONFIG(debug,debug|release): LIBS += -L$$OUT_PWD/../../src/ -lQt5Flexd
 
 INCLUDEPATH += $$PWD/../../src
 DEPENDPATH += $$PWD/../../src

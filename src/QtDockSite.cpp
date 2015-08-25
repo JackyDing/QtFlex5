@@ -527,7 +527,8 @@ bool DockSite::eventFilter(QObject* obj, QEvent* evt)
 
                 auto pos = QCursor::pos();
 
-                QApplication::sendEvent(impl->_tabBar, &QMouseEvent(QEvent::MouseButtonRelease, mouse->pos(), Qt::LeftButton, mouse->buttons(), mouse->modifiers()));
+                QMouseEvent event(QEvent::MouseButtonRelease, mouse->pos(), Qt::LeftButton, mouse->buttons(), mouse->modifiers());
+                QApplication::sendEvent(impl->_tabBar, &event);
 
                 auto dimension = size();
 
