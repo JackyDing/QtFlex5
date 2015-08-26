@@ -68,6 +68,7 @@ protected:
 
 private Q_SLOTS:
     void on_tabBar_currentChanged(int index);
+    void on_tabBar_tabMoved(int from, int to);
     void on_tabBar_tabCloseRequested(int index);
     void on_tabMdi_currentChanged(int index);
     void on_tabMdi_widgetRemoved(int index);

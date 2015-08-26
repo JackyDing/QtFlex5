@@ -26,7 +26,7 @@
 class FlexButton : public QToolButton
 {
 public:
-    FlexButton(QWidget* parent, Flex::Button button) : QToolButton(parent), _button(button), _hover(false)
+    FlexButton(QWidget* parent, Flex::Button button) : QToolButton(parent), _button(button)
     {
         setFixedSize(16, 16); setFocusPolicy(Qt::NoFocus);
     }
@@ -42,22 +42,53 @@ public:
         _button = button; update();
     }
 protected:
+    void mousePressEvent(QMouseEvent* evt)
+    {
+        auto save = _down;
+        QToolButton::mousePressEvent(evt);
+        _down = isDown();
+        if (_down != save)
+        {
+            update();
+        }
+    }
+    void mouseMoveEvent(QMouseEvent* evt)
+    {
+        auto save = _down;
+        QToolButton::mouseMoveEvent(evt);
+        _down = isDown();
+        if (_down != save)
+        {
+            update();
+        }
+    }
+    void mouseReleaseEvent(QMouseEvent* evt)
+    {
+        auto save = _down;
+        QToolButton::mouseReleaseEvent(evt);
+        _down = isDown();
+        if (_down != save)
+        {
+            update();
+        }
+    }
     void paintEvent(QPaintEvent*);
     void enterEvent(QEvent* evt)
     {
-        _hover = true;
+        _over = true;
         if (isEnabled()) update();
         QToolButton::enterEvent(evt);
     }
     void leaveEvent(QEvent* evt)
     {
-        _hover = false;
+        _over = false;
         if (isEnabled()) update();
         QToolButton::leaveEvent(evt);
     }
 private:
     Flex::Button _button;
-    bool _hover;
+    bool _over = false;
+    bool _down = false;
 };
 
 class FlexButtons : public QWidget
@@ -132,9 +163,9 @@ void FlexButton::paintEvent(QPaintEvent*)
     QIcon icon = FlexManager::instance()->icon(_button);
 
     painter.setPen(QColor("#E5C365"));
-    painter.setBrush(QColor("#FFFCF4"));
+    painter.setBrush(QColor(_down ? "#FFE8A6" : "#FFFCF4"));
 
-    if (_hover)
+    if (_over)
     {
         painter.drawRect(geom.adjusted(0, 0, -1, -1));
     }
@@ -148,7 +179,7 @@ void FlexButton::paintEvent(QPaintEvent*)
         mode = active ? QIcon::Active : QIcon::Normal;
     }
 
-    icon.paint(&painter, geom, Qt::AlignCenter, mode, _hover ? QIcon::On : QIcon::Off);
+    icon.paint(&painter, geom, Qt::AlignCenter, mode, _over ? QIcon::On : QIcon::Off);
 }
 
 class FlexHelperImpl

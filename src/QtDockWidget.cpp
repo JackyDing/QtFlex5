@@ -203,7 +203,7 @@ void DockWidget::paintEvent(QPaintEvent*)
             titleOption.icon.paint(&painter, 5, (impl->_titleBarHeight - 16) / 2, 16, 16, Qt::AlignCenter, QIcon::Active, isActive ? QIcon::On : QIcon::Off);
         }
 
-        painter.drawText(lr.x() + (hasIcon ? 4 : 0), (impl->_titleBarHeight - lr.height()) / 2 + 1, lr.width() - 2, lr.height(), Qt::AlignLeft | Qt::AlignVCenter | Qt::TextSingleLine, titleOption.text);
+        painter.drawText(8 + (hasIcon ? 18 : 0), (impl->_titleBarHeight - lr.height()) / 2, lr.width() - 2, lr.height(), Qt::AlignLeft | Qt::AlignVCenter | Qt::TextSingleLine, titleOption.text);
 
         QStyleOptionFrame frameOption;
         frameOption.initFrom(this);

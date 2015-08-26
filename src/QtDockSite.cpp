@@ -129,7 +129,14 @@ void DockSiteImpl::update(DockSite* self, Flex::DockMode dockMode)
         }
         else
         {
-            _tabMdiLayout->setContentsMargins(1, 0, 1, 1);
+            if (!tempWidget || tempWidget->isFloating())
+            {
+                _tabMdiLayout->setContentsMargins(0, 0, 0, 0);
+            }
+            else
+            {
+                _tabMdiLayout->setContentsMargins(1, 0, 1, 1);
+            }
         }
     }
 
@@ -323,6 +330,7 @@ DockSite::DockSite(DockWidget* widget, QSize baseSize, QWidget* parent) : QWidge
     }
 
     connect(impl->_tabBar, SIGNAL(currentChanged(int)), SLOT(on_tabBar_currentChanged(int)));
+    connect(impl->_tabBar, SIGNAL(tabMoved(int, int)), SLOT(on_tabBar_tabMoved(int, int)));
     connect(impl->_tabBar, SIGNAL(tabCloseRequested(int)), SLOT(on_tabBar_tabCloseRequested(int)));
     connect(impl->_tabMdi, SIGNAL(currentChanged(int)), SLOT(on_tabMdi_currentChanged(int)));
     connect(impl->_tabMdi, SIGNAL(widgetRemoved(int)), SLOT(on_tabMdi_widgetRemoved(int)));
@@ -598,7 +606,7 @@ void DockSite::paintEvent(QPaintEvent*)
 
         painter.setPen(active ? Qt::black : Qt::white);
 
-        painter.drawText(ir.x() + 2, ir.y(), ir.width() - 2, ir.height(), Qt::AlignLeft | Qt::AlignVCenter | Qt::TextSingleLine, titleOption.text);
+        painter.drawText(8, (impl->_titleBarHeight - ir.height()) / 2, ir.width() - 2, ir.height(), Qt::AlignLeft | Qt::AlignVCenter | Qt::TextSingleLine, titleOption.text);
     }
     else
     {
@@ -752,6 +760,15 @@ void DockSite::on_tabBar_currentChanged(int index)
     }
 
     update();
+}
+
+void DockSite::on_tabBar_tabMoved(int from, int to)
+{
+    impl->_tabMdi->blockSignals(true);
+    auto widget = impl->_tabMdi->widget(from);
+    impl->_tabMdi->removeWidget(widget);
+    impl->_tabMdi->insertWidget(to, widget);
+    impl->_tabMdi->blockSignals(false);
 }
 
 void DockSite::on_tabBar_tabCloseRequested(int index)
