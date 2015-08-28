@@ -19,10 +19,6 @@
 #include <qt_windows.h>
 #endif
 
-#ifdef Q_OS_MAC
-#include <private/qwidgetresizehandler_p.h>
-#endif
-
 class FlexButton : public QToolButton
 {
 public:
@@ -465,8 +461,254 @@ public:
     {
     }
 public:
-    QWidgetResizeHandler* _handler = nullptr;
+    void hittest(QWidget* widget, const QPoint& pos);
+public:
+    bool eventFilter(QObject*, QEvent*);
+public:
+    int _hit = -1;
+    QPoint _startPoint;
 };
+
+void FlexHelperImplMac::hittest(QWidget* widget, const QPoint& pos)
+{
+    QRect rect = widget->rect();
+
+    int x = rect.x();
+    int y = rect.y();
+    int w = rect.width();
+    int h = rect.height();
+
+    int hit = _hit;
+
+    if (pos.y() >= y + 4 && pos.y() < y + _titleBarHeight && pos.x() >= x + 4 && pos.x() < x + w - 4)
+    {
+        _hit = 0;
+    }
+    else
+    {
+        int row = 1;
+        int col = 1;
+
+        if (pos.y() >= y && pos.y() < y + 4)
+        {
+            row = 0;
+        }
+        else if (pos.y() < y + h && pos.y() >= y + h - 4)
+        {
+            row = 2;
+        }
+
+        if (pos.x() >= x && pos.x() < x + 4)
+        {
+            col = 0;
+        }
+        else if (pos.x() < x + w && pos.x() >= x + w - 4)
+        {
+            col = 2;
+        }
+
+        int results[3][3] =
+        {
+            { 5,  2, 6 },
+            { 1, -1, 3 },
+            { 8,  4, 7 },
+        };
+
+        _hit = results[row][col];
+    }
+
+    if (_hit != hit)
+    {
+        QObjectList children = widget->children();
+
+        for (int i = 0; i < children.size(); ++i)
+        {
+            if (QWidget *w = qobject_cast<QWidget*>(children.at(i)))
+            {
+                if (!w->testAttribute(Qt::WA_SetCursor))
+                {
+                    w->setCursor(Qt::ArrowCursor);
+                }
+            }
+        }
+
+        switch (_hit)
+        {
+        case 1:
+        case 3:
+            widget->setCursor(Qt::SizeHorCursor);
+            break;
+        case 2:
+        case 4:
+            widget->setCursor(Qt::SizeVerCursor);
+            break;
+        case 5:
+        case 7:
+            widget->setCursor(Qt::SizeFDiagCursor);
+            break;
+        case 6:
+        case 8:
+            widget->setCursor(Qt::SizeBDiagCursor);
+            break;
+        default:
+            widget->setCursor(Qt::ArrowCursor);
+            break;
+        }
+    }
+}
+
+bool FlexHelperImplMac::eventFilter(QObject* obj, QEvent* evt)
+{
+    auto widget = qobject_cast<QWidget*>(obj);
+
+    if (evt->type() == QEvent::WindowStateChange)
+    {
+        auto state = widget->windowState();
+
+        if (state & Qt::WindowMaximized)
+        {
+            _buttons->maxButton()->setButton(Flex::Restore);
+            _buttons->maxButton()->setToolTip(QWidget::tr("Restore"));
+        }
+        else
+        {
+            _buttons->maxButton()->setToolTip(QWidget::tr("Maximize"));
+            _buttons->maxButton()->setButton(Flex::Maximize);
+        }
+    }
+
+    if (evt->type() != QEvent::MouseButtonPress &&
+        evt->type() != QEvent::MouseButtonRelease &&
+        evt->type() != QEvent::MouseMove &&
+        evt->type() != QEvent::KeyPress &&
+        evt->type() != QEvent::KeyRelease &&
+        evt->type() != QEvent::ShortcutOverride)
+    {
+        return false;
+    }
+
+    switch (evt->type())
+    {
+    case QEvent::MouseButtonPress:
+    {
+        if (widget->isMaximized())
+        {
+            break;
+        }
+
+        QMouseEvent* event = static_cast<QMouseEvent*>(evt);
+
+        if (event->button() == Qt::LeftButton)
+        {
+            if (_hit >= 0)
+            {
+                _startPoint = widget->mapFromGlobal(event->globalPos());
+                _moving = true;
+                widget->grabKeyboard();
+                if (_hit == 0)
+                {
+                    QMetaObject::invokeMethod(widget, "enterMove", Q_ARG(QObject*, widget));
+                }
+            }
+        }
+
+        break;
+    }
+    case QEvent::MouseButtonRelease:
+    {
+        if (widget->isMaximized())
+        {
+            break;
+        }
+
+        QMouseEvent* event = static_cast<QMouseEvent*>(evt);
+
+        if (event->button() == Qt::LeftButton)
+        {
+            widget->releaseMouse();
+            widget->releaseKeyboard();
+            if (_moving)
+            {
+                QMetaObject::invokeMethod(widget, "leaveMove", Q_ARG(QObject*, widget));
+            }
+            _moving = false;
+        }
+
+        break;
+    }
+    case QEvent::MouseMove:
+    {
+        if (widget->isMaximized())
+        {
+            break;
+        }
+
+        QMouseEvent* event = static_cast<QMouseEvent*>(evt);
+        QPoint pos = widget->mapFromGlobal(event->globalPos());
+
+        if (_moving)
+        {
+            if (widget->testAttribute(Qt::WA_WState_ConfigPending))
+            {
+                break;
+            }
+
+            QRect geom = widget->geometry();
+
+            switch (_hit)
+            {
+            case 0:
+                widget->move(widget->pos() + pos - _startPoint);
+                break;
+            case 1:
+                break;
+            case 2:
+                break;
+            case 3:
+                break;
+            case 4:
+                break;
+            case 5:
+                break;
+            case 6:
+                break;
+            case 7:
+                break;
+            case 8:
+                break;
+            }
+        }
+        else
+        {
+            hittest(widget, pos);
+        }
+
+        break;
+    }
+    case QEvent::KeyPress:
+    {
+        QKeyEvent* event = static_cast<QKeyEvent*>(evt);
+        if (_moving && (event->key() == Qt::Key_Control || event->key() == Qt::Key_Meta))
+        {
+            DockGuider::instance()->hide();
+        }
+        break;
+    }
+    case QEvent::KeyRelease:
+    {
+        QKeyEvent* event = static_cast<QKeyEvent*>(evt);
+        if (_moving && (event->key() == Qt::Key_Control || event->key() == Qt::Key_Meta))
+        {
+            DockGuider::instance()->show();
+        }
+        break;
+    }
+    default:
+        break;
+    }
+
+    return false;
+}
 
 #endif
 
@@ -483,14 +725,12 @@ FlexHelper::FlexHelper(QWidget* parent) : QObject(parent), impl(new FlexHelperIm
     connect(d->_buttons->_minButton, SIGNAL(clicked()), SLOT(on_button_clicked()));
     parent->installEventFilter(this);
 }
-
 #endif
 
 #ifdef Q_OS_MAC
 FlexHelper::FlexHelper(QWidget* parent) : QObject(parent), impl(new FlexHelperImplMac)
 {
     auto d = static_cast<FlexHelperImplMac*>(impl.data());
-    d->_handler = new QWidgetResizeHandler(parent);
     d->_buttons = new FlexButtons(parent, parent);
     d->_extents = new FlexExtents(parent, parent);
     connect(d->_extents->_dockPullButton, SIGNAL(clicked()), SLOT(on_button_clicked()));
@@ -498,10 +738,10 @@ FlexHelper::FlexHelper(QWidget* parent) : QObject(parent), impl(new FlexHelperIm
     connect(d->_buttons->_clsButton, SIGNAL(clicked()), SLOT(on_button_clicked()));
     connect(d->_buttons->_maxButton, SIGNAL(clicked()), SLOT(on_button_clicked()));
     connect(d->_buttons->_minButton, SIGNAL(clicked()), SLOT(on_button_clicked()));
+    parent->setMouseTracking(true);
     parent->installEventFilter(this);
 }
 #endif
-
 
 FlexHelper::~FlexHelper()
 {
@@ -564,28 +804,11 @@ bool FlexHelper::eventFilter(QObject* obj, QEvent* evt)
 #ifdef Q_OS_WIN
     auto d = static_cast<FlexHelperImplWin*>(impl.data());
 #endif
-
-#ifdef Q_OS_MAC
-    auto widget = qobject_cast<QWidget*>(obj);
-#endif
 #ifdef Q_OS_MAC
     auto d = static_cast<FlexHelperImplMac*>(impl.data());
 #endif
 
-    if (evt->type() == QEvent::WinIdChange)
-    {
-#ifdef Q_OS_WIN
-        d->updateStyle(reinterpret_cast<HWND>(hwnd));
-#endif
-    }
-    else if (evt->type() == QEvent::Move)
-    {
-        if (impl->_moving)
-        {
-            QMetaObject::invokeMethod(obj, "moving", Q_ARG(QObject*, obj));
-        }
-    }
-    else if (evt->type() == QEvent::Resize)
+    if (evt->type() == QEvent::Resize)
     {
         auto tmp = static_cast<QResizeEvent*>(evt);
 
@@ -602,38 +825,35 @@ bool FlexHelper::eventFilter(QObject* obj, QEvent* evt)
 
         impl->_buttons->setGeometry(QRect(QPoint(w - bw - aw - 5, by), buttonsSize));
         impl->_extents->setGeometry(QRect(QPoint(w - bw - ew - 6, ey), extentsSize));
+
+        return false;
     }
-#ifndef Q_OS_WIN
-    else if (evt->type() == QEvent::Resize)
+
+    if (obj->property("Site").isValid())
     {
-        if (d->_handler != nullptr)
-        {
-            
-        }
+        return false;
+    }
+
+    if (evt->type() == QEvent::WinIdChange)
+    {
+#ifdef Q_OS_WIN
+        d->updateStyle(reinterpret_cast<HWND>(hwnd));
+#endif
     }
     else if (evt->type() == QEvent::Move)
     {
-        if (d->_handler != nullptr)
+        if (impl->_moving)
         {
-
+            QMetaObject::invokeMethod(obj, "moving", Q_ARG(QObject*, obj));
         }
     }
-    else if (evt->type() == QEvent::WindowStateChange)
+#ifndef Q_OS_WIN
+    else
     {
-        auto state = widget->windowState();
-        
-        if (state & Qt::WindowMaximized)
-        {
-            d->_buttons->maxButton()->setButton(Flex::Restore);
-            d->_buttons->maxButton()->setToolTip(QWidget::tr("Restore"));
-        }
-        else
-        {
-            d->_buttons->maxButton()->setToolTip(QWidget::tr("Maximize"));
-            d->_buttons->maxButton()->setButton(Flex::Maximize);
-        }
+        return d->eventFilter(obj, evt);
     }
 #endif
+
     return false;
 }
 

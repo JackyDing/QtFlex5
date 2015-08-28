@@ -90,7 +90,7 @@ public:
     QList<QRect> _siteRects;
     QList<Flex::ViewMode> _viewModes;
     int _siteIndex = -1;
-    int _guidersIndex = 0;
+    int _guidersIndex = -1;
     bool _lGuiderVisible[3];
     bool _tGuiderVisible[3];
     bool _rGuiderVisible[3];
@@ -133,6 +133,10 @@ void DockGuiderImpl::updateGuidersVisibility()
         _tGuiderVisible[1] = true;
         _rGuiderVisible[1] = true;
         _bGuiderVisible[1] = true;
+        _lGuiderVisible[2] = true;
+        _tGuiderVisible[2] = true;
+        _rGuiderVisible[2] = true;
+        _bGuiderVisible[2] = true;
         _lGuiderRect[1] = QRect(4, 90, 30, 30);
         _tGuiderRect[1] = QRect(90, 4, 30, 30);
         _rGuiderRect[1] = QRect(175, 90, 30, 30);
@@ -149,6 +153,10 @@ void DockGuiderImpl::updateGuidersVisibility()
         _tGuiderVisible[1] = true;
         _rGuiderVisible[1] = true;
         _bGuiderVisible[1] = true;
+        _lGuiderVisible[2] = true;
+        _tGuiderVisible[2] = true;
+        _rGuiderVisible[2] = true;
+        _bGuiderVisible[2] = true;
         _lGuiderRect[1] = QRect(46, 90, 30, 30);
         _tGuiderRect[1] = QRect(90, 46, 30, 30);
         _rGuiderRect[1] = QRect(133, 90, 30, 30);
@@ -194,6 +202,11 @@ Flex::DockArea DockGuider::area() const
 
 void DockGuider::paintEvent(QPaintEvent*)
 {
+    if (impl->_guidersIndex < 0)
+    {
+        return;
+    }
+
     QRect client = rect();
     int x, y, w, h;
     client.getRect(&x,  &y, &w, &h);
@@ -208,6 +221,7 @@ void DockGuider::paintEvent(QPaintEvent*)
     QPoint offset = siteRect.center() - Icons::ptr()->guidersBoundingRect[impl->_guidersIndex].center();
 
     QPainter painter(this);
+
     painter.setBrush(QBrush(QColor("#424242")));
     painter.setPen(QPen(QColor("#424242")));
 

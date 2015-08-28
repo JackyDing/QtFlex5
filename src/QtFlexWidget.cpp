@@ -765,8 +765,6 @@ void FlexWidgetImpl::simplify(FlexWidget*, DockSite* dockSite)
     _adjusting = adjusting;
 }
 
-Q_DECLARE_METATYPE(QMargins)
-
 FlexWidget::FlexWidget(Flex::ViewMode viewMode, QWidget* parent, Qt::WindowFlags flags) : QWidget(parent, flags), impl(new FlexWidgetImpl)
 {
     setAttribute(Qt::WA_DeleteOnClose);

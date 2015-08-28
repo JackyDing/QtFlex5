@@ -290,6 +290,7 @@ DockSite::DockSite(DockWidget* widget, QSize baseSize, QWidget* parent) : QWidge
     setAttribute(Qt::WA_DeleteOnClose);
     setFocusPolicy(Qt::StrongFocus);
     setProperty("Flex", true);
+    setProperty("Site", true);
     setBaseSize(baseSize);
 
     auto arranger = new QVBoxLayout(this);

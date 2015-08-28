@@ -190,6 +190,9 @@ public:
 public:
     QIcon icon(Flex::Button button);
 
+private:
+    bool eventFilter(QObject*, QEvent*);
+
 private Q_SLOTS:
     void on_app_focusChanged(QWidget* old, QWidget* now);
     void on_dockWidget_destroyed(QObject* widget);
