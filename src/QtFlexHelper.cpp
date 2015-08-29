@@ -466,8 +466,9 @@ public:
 public:
     bool eventFilter(QObject*, QEvent*);
 public:
+    bool _resize = false;
     int _hit = -1;
-    QPoint _startPoint;
+    QPoint _old;
 };
 
 void FlexHelperImplMac::hittest(QWidget* widget, const QPoint& pos)
@@ -594,13 +595,19 @@ bool FlexHelperImplMac::eventFilter(QObject* obj, QEvent* evt)
         {
             if (_hit >= 0)
             {
-                _startPoint = widget->mapFromGlobal(event->globalPos());
-                _moving = true;
                 widget->grabKeyboard();
+
                 if (_hit == 0)
                 {
+                    _moving = true;
                     QMetaObject::invokeMethod(widget, "enterMove", Q_ARG(QObject*, widget));
                 }
+                else
+                {
+                    _resize = true;
+                }
+
+                _old = event->globalPos();
             }
         }
 
@@ -617,13 +624,15 @@ bool FlexHelperImplMac::eventFilter(QObject* obj, QEvent* evt)
 
         if (event->button() == Qt::LeftButton)
         {
-            widget->releaseMouse();
             widget->releaseKeyboard();
+
             if (_moving)
             {
                 QMetaObject::invokeMethod(widget, "leaveMove", Q_ARG(QObject*, widget));
             }
+
             _moving = false;
+            _resize = false;
         }
 
         break;
@@ -636,43 +645,88 @@ bool FlexHelperImplMac::eventFilter(QObject* obj, QEvent* evt)
         }
 
         QMouseEvent* event = static_cast<QMouseEvent*>(evt);
-        QPoint pos = widget->mapFromGlobal(event->globalPos());
 
-        if (_moving)
+        if (_moving || _resize)
         {
             if (widget->testAttribute(Qt::WA_WState_ConfigPending))
             {
                 break;
             }
 
+            int x, y, w, h;
+
+            QPoint off = event->globalPos() - _old;
+
+            QSize minSize = widget->minimumSize();
+
             QRect geom = widget->geometry();
+
+            geom.getRect(&x, &y, &w, &h);
 
             switch (_hit)
             {
-            case 0:
-                widget->move(widget->pos() + pos - _startPoint);
-                break;
             case 1:
+                off.setY(0);
+                if (w - off.x() <= minSize.width()) off.setX(0);
+                geom = QRect(x + off.x(), y, w - off.x(), h);
                 break;
             case 2:
+                off.setX(0);
+                if (h - off.y() <= minSize.height()) off.setY(0);
+                geom = QRect(x, y + off.y(), w, h - off.y());
                 break;
             case 3:
+                off.setY(0);
+                if (w + off.x() <= minSize.width()) off.setX(0);
+                geom = QRect(x, y, w + off.x(), h);
                 break;
             case 4:
+                off.setX(0);
+                if (h + off.y() <= minSize.height()) off.setY(0);
+                geom = QRect(x, y, w, h + off.y());
                 break;
             case 5:
+                if (w - off.x() <= minSize.width()) off.setX(0);
+                if (h - off.y() <= minSize.height()) off.setY(0);
+                geom = QRect(x + off.x(), y + off.y(), w - off.x(), h - off.y());
                 break;
             case 6:
+                if (w + off.x() <= minSize.width()) off.setX(0);
+                if (h - off.y() <= minSize.height()) off.setY(0);
+                geom = QRect(x, y + off.y(), w + off.x(), h - off.y());
                 break;
             case 7:
+                if (w + off.x() <= minSize.width()) off.setX(0);
+                if (h + off.y() <= minSize.height()) off.setY(0);
+                geom = QRect(x, y, w + off.x(), h + off.y());
                 break;
             case 8:
+                if (w - off.x() <= minSize.width()) off.setX(0);
+                if (h + off.y() <= minSize.height()) off.setY(0);
+                geom = QRect(x + off.x(), y, w - off.x(), h + off.y());
                 break;
+            }
+
+            if (_hit == 0)
+            {
+                widget->move(widget->pos() + off);
+            }
+            else
+            {
+                if (!off.isNull())
+                {
+                    widget->setGeometry(geom);
+                }
+            }
+
+            if (!off.isNull())
+            {
+                _old += off;
             }
         }
         else
         {
-            hittest(widget, pos);
+            hittest(widget, widget->mapFromGlobal(event->globalPos()));
         }
 
         break;
@@ -701,7 +755,10 @@ bool FlexHelperImplMac::eventFilter(QObject* obj, QEvent* evt)
         QKeyEvent* event = static_cast<QKeyEvent*>(evt);
         if (_moving && (event->key() == Qt::Key_Control || event->key() == Qt::Key_Meta))
         {
-            DockGuider::instance()->hide();
+            if (DockGuider::instance())
+            {
+                DockGuider::instance()->hide();
+            }
         }
         break;
     }
@@ -710,7 +767,10 @@ bool FlexHelperImplMac::eventFilter(QObject* obj, QEvent* evt)
         QKeyEvent* event = static_cast<QKeyEvent*>(evt);
         if (_moving && (event->key() == Qt::Key_Control || event->key() == Qt::Key_Meta))
         {
-            DockGuider::instance()->show();
+            if (DockGuider::instance())
+            {
+                DockGuider::instance()->show();
+            }
         }
         break;
     }

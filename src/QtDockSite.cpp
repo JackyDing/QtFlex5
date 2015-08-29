@@ -562,6 +562,8 @@ bool DockSite::eventFilter(QObject* obj, QEvent* evt)
 
 #ifdef Q_OS_WIN
                 SendMessage((HWND)flexWidget->effectiveWinId(), WM_NCLBUTTONDOWN, HTCAPTION, MAKELONG(pos.x(), pos.y()));
+#else
+                QApplication::postEvent(flexWidget, new QMouseEvent(mouse->type(), flexWidget->mapFromGlobal(pos), mouse->button(), mouse->buttons(), evt->modifiers()));
 #endif
                 return true;
             }
@@ -698,6 +700,8 @@ void DockSite::mouseMoveEvent(QMouseEvent* evt)
 
 #ifdef Q_OS_WIN
         SendMessage((HWND)flexWidget->effectiveWinId(), WM_NCLBUTTONDOWN, HTCAPTION, MAKELONG(pos.x(), pos.y()));
+#else
+        QApplication::postEvent(flexWidget, new QMouseEvent(evt->type(), flexWidget->mapFromGlobal(pos), evt->button(), evt->buttons(), evt->modifiers()));
 #endif
     }
 }
