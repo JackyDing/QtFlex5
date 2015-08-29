@@ -37,6 +37,15 @@ public:
     {
         _button = button; update();
     }
+public:
+    void setOver(bool over)
+    {
+        _over = over;
+    }
+    void setDown(bool down)
+    {
+        _down = down;
+    }
 protected:
     void mousePressEvent(QMouseEvent* evt)
     {
@@ -63,7 +72,6 @@ protected:
         auto save = _down;
         QToolButton::mouseReleaseEvent(evt);
         _down = isDown();
-        _over = isDown();
         if (_down != save)
         {
             update();
@@ -140,6 +148,9 @@ public:
         _layout->addWidget(_dockPullButton);
         _layout->addWidget(_autoHideButton);
     }
+    FlexButton* dockPullButton() const { return _dockPullButton; }
+    FlexButton* autoHideButton() const { return _autoHideButton; }
+
 public:
     QWidget* _docket;
     QHBoxLayout* _layout;
@@ -896,7 +907,12 @@ bool FlexHelper::eventFilter(QObject* obj, QEvent* evt)
         auto by = (impl->_titleBarHeight - buttonsSize.height()) / 2 + 1;
         auto ey = (impl->_titleBarHeight - extentsSize.height()) / 2 + 1;
 
+        impl->_buttons->minButton()->setOver(false);
+        impl->_buttons->maxButton()->setOver(false);
+        impl->_buttons->clsButton()->setOver(false);
         impl->_buttons->setGeometry(QRect(QPoint(w - bw - aw - 5, by), buttonsSize));
+        impl->_extents->dockPullButton()->setOver(false);
+        impl->_extents->autoHideButton()->setOver(false);
         impl->_extents->setGeometry(QRect(QPoint(w - bw - ew - 6, ey), extentsSize));
 
         return false;
