@@ -180,6 +180,16 @@ void FlexStyle::drawControl(ControlElement ce, const QStyleOption *opt, QPainter
             return;
         }
         break;
+    case CE_Splitter:
+        if (!w || !w->parent()->property("Flex").isValid())
+        {
+            break;
+        }
+        else
+        {
+            return;
+        }
+        break;
     default:
         break;
     }

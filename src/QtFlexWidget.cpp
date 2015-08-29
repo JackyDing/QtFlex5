@@ -434,6 +434,7 @@ void FlexWidgetImpl::addDockSite(FlexWidget* self, DockSite* dockSite, Qt::Orien
     else
     {
         QSplitter* splitter = new QSplitter(orientation);
+        splitter->setProperty("Flex", true);
         if (direction == 0)
         {
             splitter->addWidget(dockSite);
@@ -496,6 +497,7 @@ void FlexWidgetImpl::addDockSite(FlexWidget* /*self*/, DockSite* dockSite, int s
     {
         auto sizes = splitter->sizes();
         QSplitter* subSplitter = new QSplitter(orientation);
+        splitter->setProperty("Flex", true);
         if (direction == 0)
         {
             subSplitter->addWidget(dockSite);
@@ -580,6 +582,7 @@ void FlexWidgetImpl::addFlexWidget(FlexWidget* self, FlexWidget* widget, Qt::Ori
         else
         {
             QSplitter* splitter = new QSplitter(orientation);
+            splitter->setProperty("Flex", true);
             if (direction == 0)
             {
                 splitter->addWidget(widgetContainer);
@@ -682,6 +685,7 @@ void FlexWidgetImpl::addFlexWidget(FlexWidget* self, FlexWidget* widget, int sit
         {
             auto sizes = splitter->sizes();
             auto subSplitter = new QSplitter(orientation);
+            splitter->setProperty("Flex", true);
             if (direction == 0)
             {
                 subSplitter->addWidget(widgetContainer);
@@ -788,8 +792,10 @@ FlexWidget::FlexWidget(Flex::ViewMode viewMode, QWidget* parent, Qt::WindowFlags
     connect(impl->_sides[Flex::B], SIGNAL(currentChanged(DockSide*, DockSite*, DockSite*)), SLOT(on_side_currentChanged(DockSide*, DockSite*, DockSite*)));
 
     impl->_siteContainer = new QSplitter(this);
+    impl->_siteContainer->setProperty("Flex", true);
     impl->_siteContainer->setObjectName("_flex_siteContainer");
     impl->_sideContainer = new QSplitter(this);
+    impl->_sideContainer->setProperty("Flex", true);
     impl->_sideContainer->setObjectName("_flex_sideContainer");
 
     auto arranger = new QGridLayout(this);

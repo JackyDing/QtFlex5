@@ -63,6 +63,7 @@ protected:
         auto save = _down;
         QToolButton::mouseReleaseEvent(evt);
         _down = isDown();
+        _over = isDown();
         if (_down != save)
         {
             update();
@@ -561,7 +562,9 @@ bool FlexHelperImplMac::eventFilter(QObject* obj, QEvent* evt)
 {
     auto widget = qobject_cast<QWidget*>(obj);
 
-    if (evt->type() == QEvent::WindowStateChange)
+    switch (evt->type())
+    {
+    case QEvent::WindowStateChange:
     {
         auto state = widget->windowState();
 
@@ -575,20 +578,9 @@ bool FlexHelperImplMac::eventFilter(QObject* obj, QEvent* evt)
             _buttons->maxButton()->setToolTip(QWidget::tr("Maximize"));
             _buttons->maxButton()->setButton(Flex::Maximize);
         }
-    }
 
-    if (evt->type() != QEvent::MouseButtonPress &&
-        evt->type() != QEvent::MouseButtonRelease &&
-        evt->type() != QEvent::MouseMove &&
-        evt->type() != QEvent::KeyPress &&
-        evt->type() != QEvent::KeyRelease &&
-        evt->type() != QEvent::ShortcutOverride)
-    {
-        return false;
+        break;
     }
-
-    switch (evt->type())
-    {
     case QEvent::MouseButtonPress:
     {
         if (widget->isMaximized())
@@ -685,6 +677,25 @@ bool FlexHelperImplMac::eventFilter(QObject* obj, QEvent* evt)
 
         break;
     }
+    case QEvent::MouseButtonDblClick:
+    {
+        if (widget->isMinimized())
+        {
+            break;
+        }
+
+        QMouseEvent* event = static_cast<QMouseEvent*>(evt);
+
+        if (event->button() == Qt::LeftButton)
+        {
+            if (_hit == 0)
+            {
+                widget->showMinimized(); _hit = -1;
+            }
+        }
+
+        break;
+    }
     case QEvent::KeyPress:
     {
         QKeyEvent* event = static_cast<QKeyEvent*>(evt);
@@ -704,7 +715,9 @@ bool FlexHelperImplMac::eventFilter(QObject* obj, QEvent* evt)
         break;
     }
     default:
+    {
         break;
+    }
     }
 
     return false;
@@ -858,7 +871,6 @@ bool FlexHelper::eventFilter(QObject* obj, QEvent* evt)
 }
 
 #ifdef Q_OS_WIN
-
 LRESULT WINAPI FlexHelperImplWin::keyEvent(int nCode, WPARAM wParam, LPARAM lParam)
 {
     if (nCode < 0)
@@ -880,7 +892,6 @@ LRESULT WINAPI FlexHelperImplWin::keyEvent(int nCode, WPARAM wParam, LPARAM lPar
 
     return CallNextHookEx(FlexHelperImplWin::_hook, nCode, wParam, lParam);
 }
-
 #endif
 
 bool FlexHelper::nativeEvent(const QByteArray&, void* event, long* result)

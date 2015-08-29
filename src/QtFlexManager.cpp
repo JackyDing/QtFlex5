@@ -13,12 +13,11 @@
 
 int Flex::Update = QEvent::registerEventType();
 
+#ifdef Q_OS_WIN
 WId topLevelWindowAt(QWidget* widget, const QPoint& pos)
 {
     WId hTmp = 0;
-#ifdef Q_OS_WIN
     HWND hWnd = GetWindow(reinterpret_cast<HWND>(widget->effectiveWinId()), GW_HWNDNEXT);
-
     while (hWnd != nullptr && reinterpret_cast<HWND>(hTmp) == nullptr)
     {
         POINT pnt = { pos.x(), pos.y() };
@@ -26,11 +25,9 @@ WId topLevelWindowAt(QWidget* widget, const QPoint& pos)
         hTmp = reinterpret_cast<WId>(ChildWindowFromPoint(hWnd, pnt));
         hWnd = GetWindow(hWnd, GW_HWNDNEXT);
     }
-
-    hTmp = reinterpret_cast<WId>(GetAncestor(reinterpret_cast<HWND>(hTmp), GA_ROOT));
-#endif
-    return hTmp;
+    return reinterpret_cast<WId>(GetAncestor(reinterpret_cast<HWND>(hTmp), GA_ROOT));
 }
+#endif
 
 DockSite* getDockSite(QWidget* widget)
 {
@@ -138,6 +135,7 @@ QIcon FlexManager::icon(Flex::Button button)
 
 bool FlexManager::eventFilter(QObject* obj, QEvent* evt)
 {
+#ifndef Q_OS_WIN
     if (evt->type() == QEvent::WindowActivate)
     {
         FlexWidget* flexWidget;
@@ -159,6 +157,7 @@ bool FlexManager::eventFilter(QObject* obj, QEvent* evt)
             return false;
         }
     }
+#endif
     return false;
 }
 
@@ -176,7 +175,7 @@ void FlexManager::on_flexWidget_guiderShow(FlexWidget* flexWidget, QWidget* widg
 {
     Q_ASSERT(widget != nullptr); 
 #ifdef Q_OS_WIN
-    SetWindowPos(reinterpret_cast<HWND>(flexWidget->effectiveWinId()), reinterpret_cast<HWND>(widget->effectiveWinId()), 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE | SWP_NOACTIVATE);
+    SetWindowPos(reinterpret_cast<HWND>(flexWidget->window()->effectiveWinId()), reinterpret_cast<HWND>(widget->effectiveWinId()), 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE | SWP_NOACTIVATE);
 #else
     flexWidget->window()->raise();
     if (impl->_flexWidgets.size() > 1 && impl->_flexWidgets[1] != flexWidget && impl->_flexWidgets.removeOne(flexWidget))
@@ -205,7 +204,11 @@ void FlexManager::on_flexWidget_guiderDrop(FlexWidget* flexWidget, DockWidget* w
     Q_ASSERT(widget != nullptr);
     if (flexWidget->dropGuider(widget))
     {
-        flexWidget->raise();
+#ifdef Q_OS_WIN
+        SetWindowPos(reinterpret_cast<HWND>(flexWidget->window()->effectiveWinId()), HWND_TOP, 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE | 1800);
+#else
+        flexWidget->window()->raise();
+#endif
     }
     else
     {
@@ -223,7 +226,9 @@ void FlexManager::on_flexWidget_guiderDrop(FlexWidget* flexWidget, FlexWidget* w
     if (flexWidget->dropGuider(widget))
     {
 #ifdef Q_OS_WIN
-        SetWindowPos(reinterpret_cast<HWND>(flexWidget->effectiveWinId()), HWND_TOP, 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE | 1800);
+        SetWindowPos(reinterpret_cast<HWND>(flexWidget->window()->effectiveWinId()), HWND_TOP, 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE | 1800);
+#else
+        flexWidget->window()->raise();
 #endif
     }
     else
@@ -252,6 +257,10 @@ void FlexManager::on_flexWidget_leaveMove(QObject* object)
 
     auto pos = QCursor::pos();
 
+#ifdef Q_OS_WIN
+    auto top = topLevelWindowAt(widget, pos);
+#endif
+
     auto has = false;
 
     impl->_ready = false;
@@ -265,7 +274,11 @@ void FlexManager::on_flexWidget_leaveMove(QObject* object)
             continue;
         }
 
-        if (!has && flexWidget->rect().contains(flexWidget->mapFromGlobal(pos)))
+#ifdef Q_OS_WIN
+        if (!has && flexWidget->window()->effectiveWinId() == top && flexWidget->isDockAllowed(widget, flexWidget->mapFromGlobal(pos)))
+#else
+        if (!has && flexWidget->isDockAllowed(widget, flexWidget->mapFromGlobal(pos)))
+#endif
         {
             if (flexWidget->isGuiderExists())
             {
@@ -301,6 +314,10 @@ void FlexManager::on_flexWidget_moving(QObject* object)
 
     auto pos = QCursor::pos();
 
+#ifdef Q_OS_WIN
+    auto top = topLevelWindowAt(widget, pos);
+#endif
+
     auto has = false;
 
     for (auto iter = impl->_flexWidgets.begin(); iter != impl->_flexWidgets.end(); ++iter)
@@ -312,7 +329,11 @@ void FlexManager::on_flexWidget_moving(QObject* object)
             continue;
         }
 
+#ifdef Q_OS_WIN
+        if (!has && flexWidget->window()->effectiveWinId() == top && flexWidget->isDockAllowed(widget, flexWidget->mapFromGlobal(pos)))
+#else
         if (!has && flexWidget->isDockAllowed(widget, flexWidget->mapFromGlobal(pos)))
+#endif
         {
             if (flexWidget->isGuiderExists())
             {
@@ -354,6 +375,10 @@ void FlexManager::on_dockWidget_leaveMove(QObject* object)
 
     auto pos = QCursor::pos();
 
+#ifdef Q_OS_WIN
+    auto top = topLevelWindowAt(widget, pos);
+#endif
+
     auto has = false;
 
     impl->_ready = false;
@@ -362,7 +387,11 @@ void FlexManager::on_dockWidget_leaveMove(QObject* object)
     {
         auto flexWidget = *iter;
 
-        if (!has && flexWidget->rect().contains(flexWidget->mapFromGlobal(pos)))
+#ifdef Q_OS_WIN
+        if (!has && flexWidget->window()->effectiveWinId() == top && flexWidget->isDockAllowed(widget, flexWidget->mapFromGlobal(pos)))
+#else
+        if (!has && flexWidget->isDockAllowed(widget, flexWidget->mapFromGlobal(pos)))
+#endif
         {
             if (flexWidget->isGuiderExists())
             {
@@ -398,13 +427,21 @@ void FlexManager::on_dockWidget_moving(QObject* object)
 
     auto pos = QCursor::pos();
 
+#ifdef Q_OS_WIN
+    auto top = topLevelWindowAt(widget, pos);
+#endif
+
     auto has = false;
 
     for (auto iter = impl->_flexWidgets.begin(); iter != impl->_flexWidgets.end(); ++iter)
     {
         auto flexWidget = *iter;
 
+#ifdef Q_OS_WIN
+        if (!has && flexWidget->window()->effectiveWinId() == top && flexWidget->isDockAllowed(widget, flexWidget->mapFromGlobal(pos)))
+#else
         if (!has && flexWidget->isDockAllowed(widget, flexWidget->mapFromGlobal(pos)))
+#endif
         {
             if (flexWidget->isGuiderExists())
             {
