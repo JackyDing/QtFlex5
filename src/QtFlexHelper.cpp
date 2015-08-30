@@ -607,6 +607,7 @@ bool FlexHelperImplMac::eventFilter(QObject* obj, QEvent* evt)
             if (_hit >= 0)
             {
                 widget->grabKeyboard();
+                widget->grabMouse();
 
                 if (_hit == 0)
                 {
@@ -635,6 +636,7 @@ bool FlexHelperImplMac::eventFilter(QObject* obj, QEvent* evt)
 
         if (event->button() == Qt::LeftButton)
         {
+            widget->releaseMouse();
             widget->releaseKeyboard();
 
             if (_moving)

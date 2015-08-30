@@ -176,10 +176,10 @@ void DockSiteImpl::adjust(DockSite* self, DockWidget* widget)
     {
         tabPalette.setColor(QPalette::Active, QPalette::Highlight, QColor("#FFF29D"));
         tabPalette.setColor(QPalette::Inactive, QPalette::Highlight, QColor("#4D6082"));
-        tabPalette.setColor(QPalette::Active, _tabBar->backgroundRole(), QColor("#5B7199"));
-        tabPalette.setColor(QPalette::Inactive, _tabBar->backgroundRole(), QColor("#364E6F"));
-        tabPalette.setColor(QPalette::Active, _tabBar->foregroundRole(), QColor("#000000"));
-        tabPalette.setColor(QPalette::Inactive, _tabBar->foregroundRole(), QColor("#FFFFFF"));
+        tabPalette.setColor(QPalette::Active, QPalette::Window, QColor("#5B7199"));
+        tabPalette.setColor(QPalette::Inactive, QPalette::Window, QColor("#364E6F"));
+        tabPalette.setColor(QPalette::Active, QPalette::WindowText, QColor("#000000"));
+        tabPalette.setColor(QPalette::Inactive, QPalette::WindowText, QColor("#FFFFFF"));
         arranger->setContentsMargins(0, 0, 0, 0);
         arranger->addLayout(_tabBarLayout, 0);
         arranger->addLayout(_tabMdiLayout, 1);
@@ -191,10 +191,10 @@ void DockSiteImpl::adjust(DockSite* self, DockWidget* widget)
     {
         tabPalette.setColor(QPalette::Active, QPalette::Highlight, QColor("#FFFFFF"));
         tabPalette.setColor(QPalette::Inactive, QPalette::Highlight, QColor("#FFFFFF"));
-        tabPalette.setColor(QPalette::Active, _tabBar->backgroundRole(), QColor("#5B7199"));
-        tabPalette.setColor(QPalette::Inactive, _tabBar->backgroundRole(), QColor("#4D6082"));
-        tabPalette.setColor(QPalette::Active, _tabBar->foregroundRole(), QColor("#000000"));
-        tabPalette.setColor(QPalette::Inactive, _tabBar->foregroundRole(), QColor("#FFFFFF"));
+        tabPalette.setColor(QPalette::Active, QPalette::Window, QColor("#5B7199"));
+        tabPalette.setColor(QPalette::Inactive, QPalette::Window, QColor("#4D6082"));
+        tabPalette.setColor(QPalette::Active, QPalette::WindowText, QColor("#000000"));
+        tabPalette.setColor(QPalette::Inactive, QPalette::WindowText, QColor("#FFFFFF"));
         arranger->setContentsMargins(0, 0, 0, 0);
         arranger->addLayout(_tabMdiLayout, 1);
         arranger->addLayout(_tabBarLayout, 0);
@@ -204,6 +204,7 @@ void DockSiteImpl::adjust(DockSite* self, DockWidget* widget)
     }
 
     _tabBar->setPalette(tabPalette);
+    _tabBar->setDocumentMode(true);
 }
 
 void DockSiteImpl::update(DockSite* self, DockWidget* widget, int method)
@@ -563,7 +564,7 @@ bool DockSite::eventFilter(QObject* obj, QEvent* evt)
 #ifdef Q_OS_WIN
                 SendMessage((HWND)flexWidget->effectiveWinId(), WM_NCLBUTTONDOWN, HTCAPTION, MAKELONG(pos.x(), pos.y()));
 #else
-                QApplication::postEvent(flexWidget, new QMouseEvent(mouse->type(), flexWidget->mapFromGlobal(pos), mouse->button(), mouse->buttons(), evt->modifiers()));
+                QApplication::postEvent(flexWidget, new QMouseEvent(mouse->type(), flexWidget->mapFromGlobal(pos), mouse->button(), mouse->buttons(), mouse->modifiers()));
 #endif
                 return true;
             }

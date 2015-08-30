@@ -274,6 +274,11 @@ void FlexManager::on_flexWidget_leaveMove(QObject* object)
             continue;
         }
 
+        if (flexWidget->window()->isMinimized())
+        {
+            continue;
+        }
+
 #ifdef Q_OS_WIN
         if (!has && flexWidget->window()->effectiveWinId() == top && flexWidget->isDockAllowed(widget, flexWidget->mapFromGlobal(pos)))
 #else
@@ -325,6 +330,11 @@ void FlexManager::on_flexWidget_moving(QObject* object)
         auto flexWidget = *iter;
 
         if (flexWidget == widget)
+        {
+            continue;
+        }
+
+        if (flexWidget->window()->isMinimized())
         {
             continue;
         }
@@ -387,6 +397,11 @@ void FlexManager::on_dockWidget_leaveMove(QObject* object)
     {
         auto flexWidget = *iter;
 
+        if (flexWidget->window()->isMinimized())
+        {
+            continue;
+        }
+
 #ifdef Q_OS_WIN
         if (!has && flexWidget->window()->effectiveWinId() == top && flexWidget->isDockAllowed(widget, flexWidget->mapFromGlobal(pos)))
 #else
@@ -436,6 +451,11 @@ void FlexManager::on_dockWidget_moving(QObject* object)
     for (auto iter = impl->_flexWidgets.begin(); iter != impl->_flexWidgets.end(); ++iter)
     {
         auto flexWidget = *iter;
+
+        if (flexWidget->window()->isMinimized())
+        {
+            continue;
+        }
 
 #ifdef Q_OS_WIN
         if (!has && flexWidget->window()->effectiveWinId() == top && flexWidget->isDockAllowed(widget, flexWidget->mapFromGlobal(pos)))

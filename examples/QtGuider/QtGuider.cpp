@@ -51,7 +51,7 @@ QtGuider::QtGuider(QWidget *parent, Qt::WindowFlags flags) : QMainWindow(parent,
 
     setCentralWidget(new Central(this));
 
-    setGeometry(QRect(QApplication::desktop()->availableGeometry().center() - QPoint(512, 360), QSize(1024, 720)));
+    setGeometry(QApplication::desktop()->availableGeometry().adjusted(100, 100, -100, -100));
 }
 
 QtGuider::~QtGuider()

@@ -72,7 +72,7 @@ void FlexStyle::drawPrimitive(PrimitiveElement pe, const QStyleOption *opt, QPai
         {
             break;
         }
-        if (auto tbb = qstyleoption_cast<const QStyleOptionTabBarBase*>(opt))
+        if (auto tbb = qstyleoption_cast<const QStyleOptionTabBarBaseV2*>(opt))
         {
             auto active = w->property("active").toBool();
             auto colour = tbb->palette.color(active ? QPalette::Active : QPalette::Inactive, QPalette::Highlight);
@@ -80,12 +80,12 @@ void FlexStyle::drawPrimitive(PrimitiveElement pe, const QStyleOption *opt, QPai
             switch (tbb->shape) 
             {
             case QTabBar::RoundedNorth:
-                p->setPen(QPen(colour, 0));
-                p->drawLine(tbb->rect.topLeft() + QPoint(0, -1), tbb->rect.topRight() + QPoint(0, -1));
-                p->drawLine(tbb->rect.topLeft() + QPoint(0, +0), tbb->rect.topRight() + QPoint(0, +0));
+                p->setPen(QPen(colour, 1));
+                p->drawLine(tbb->rect.bottomLeft() + QPoint(0, -1), tbb->rect.bottomRight() + QPoint(0, -1));
+                p->drawLine(tbb->rect.bottomLeft() + QPoint(0, +0), tbb->rect.bottomRight() + QPoint(0, +0));
                 break;
             case QTabBar::RoundedSouth:
-                p->setPen(QPen(QColor("#8692B1"), 0));
+                p->setPen(QPen(QColor("#8692B1"), 1));
                 p->drawLine(tbb->rect.left(), tbb->rect.top() + 0, tbb->rect.right(), tbb->rect.top() + 0);
                 break;
             default:
@@ -176,7 +176,11 @@ void FlexStyle::drawControl(ControlElement ce, const QStyleOption *opt, QPainter
             }
             QStyleOptionTabV3 tmp = *tab;
             tmp.palette = palette;
+#ifdef Q_OS_MAC
+            QCommonStyle::drawControl(ce, &tmp, p, w);
+#else
             QProxyStyle::drawControl(ce, &tmp, p, w);
+#endif
             return;
         }
         break;
