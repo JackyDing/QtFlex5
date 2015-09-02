@@ -50,6 +50,14 @@ QtGuider::QtGuider(QWidget *parent, Qt::WindowFlags flags) : QMainWindow(parent,
     impl->ui.setupUi(this);
 
     setCentralWidget(new Central(this));
+    
+    auto docker1 = new QDockWidget("Docker1", this);
+    docker1->setWidget(new QWidget(this));
+    auto docker2 = new QDockWidget("Docker2", this);
+    docker2->setWidget(new QWidget(this));
+
+    addDockWidget(Qt::LeftDockWidgetArea, docker1);
+    addDockWidget(Qt::LeftDockWidgetArea, docker2);
 
     setGeometry(QApplication::desktop()->availableGeometry().adjusted(100, 100, -100, -100));
 }

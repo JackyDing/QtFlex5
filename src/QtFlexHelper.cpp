@@ -19,6 +19,8 @@
 #include <qt_windows.h>
 #endif
 
+#include <private/qwidgetresizehandler_p.h>
+
 class FlexButton : public QToolButton
 {
 public:
@@ -466,6 +468,28 @@ BOOL FlexHelperImplWin::modifyStyle(HWND hwnd, DWORD rsStyle, DWORD asStyle, UIN
 
 #ifdef Q_OS_MAC
 
+class FlexHandler : public QWidgetResizeHandler
+{
+public:
+    FlexHandler(QWidget* parent, QWidget* widget) : QWidgetResizeHandler(parent, widget)
+    {
+        setMovingEnabled(false);
+    }
+
+public:
+    bool eventFilter(QObject* obj, QEvent* evt)
+    {
+        if (obj->property("Site").isValid())
+        {
+            return false;
+        }
+        else
+        {
+            return QWidgetResizeHandler::eventFilter(obj, evt);
+        }
+    }
+};
+
 class FlexHelperImplMac : public FlexHelperImpl
 {
 public:
@@ -477,7 +501,7 @@ public:
 public:
     bool eventFilter(QObject*, QEvent*);
 public:
-    bool _resize = false;
+    QWidgetResizeHandler* _handler = nullptr;
     int _hit = -1;
     QPoint _old;
 };
@@ -489,9 +513,6 @@ void FlexHelperImplMac::hittest(QWidget* widget, const QPoint& pos)
     int x = rect.x();
     int y = rect.y();
     int w = rect.width();
-    int h = rect.height();
-
-    int hit = _hit;
 
     if (pos.y() >= y + 4 && pos.y() < y + _titleBarHeight && pos.x() >= x + 4 && pos.x() < x + w - 4)
     {
@@ -499,74 +520,7 @@ void FlexHelperImplMac::hittest(QWidget* widget, const QPoint& pos)
     }
     else
     {
-        int row = 1;
-        int col = 1;
-
-        if (pos.y() >= y && pos.y() < y + 4)
-        {
-            row = 0;
-        }
-        else if (pos.y() < y + h && pos.y() >= y + h - 4)
-        {
-            row = 2;
-        }
-
-        if (pos.x() >= x && pos.x() < x + 4)
-        {
-            col = 0;
-        }
-        else if (pos.x() < x + w && pos.x() >= x + w - 4)
-        {
-            col = 2;
-        }
-
-        int results[3][3] =
-        {
-            { 5,  2, 6 },
-            { 1, -1, 3 },
-            { 8,  4, 7 },
-        };
-
-        _hit = results[row][col];
-    }
-
-    if (_hit != hit)
-    {
-        QObjectList children = widget->children();
-
-        for (int i = 0; i < children.size(); ++i)
-        {
-            if (QWidget *w = qobject_cast<QWidget*>(children.at(i)))
-            {
-                if (!w->testAttribute(Qt::WA_SetCursor))
-                {
-                    w->setCursor(Qt::ArrowCursor);
-                }
-            }
-        }
-
-        switch (_hit)
-        {
-        case 1:
-        case 3:
-            widget->setCursor(Qt::SizeHorCursor);
-            break;
-        case 2:
-        case 4:
-            widget->setCursor(Qt::SizeVerCursor);
-            break;
-        case 5:
-        case 7:
-            widget->setCursor(Qt::SizeFDiagCursor);
-            break;
-        case 6:
-        case 8:
-            widget->setCursor(Qt::SizeBDiagCursor);
-            break;
-        default:
-            widget->setCursor(Qt::ArrowCursor);
-            break;
-        }
+        _hit = -1;
     }
 }
 
@@ -604,19 +558,15 @@ bool FlexHelperImplMac::eventFilter(QObject* obj, QEvent* evt)
 
         if (event->button() == Qt::LeftButton)
         {
+            hittest(widget, event->pos());
+
             if (_hit >= 0)
             {
                 widget->grabKeyboard();
-                widget->grabMouse();
 
                 if (_hit == 0)
                 {
-                    _moving = true;
-                    QMetaObject::invokeMethod(widget, "enterMove", Q_ARG(QObject*, widget));
-                }
-                else
-                {
-                    _resize = true;
+                    _moving = true; QMetaObject::invokeMethod(widget, "enterMove", Q_ARG(QObject*, widget));
                 }
 
                 _old = event->globalPos();
@@ -636,7 +586,6 @@ bool FlexHelperImplMac::eventFilter(QObject* obj, QEvent* evt)
 
         if (event->button() == Qt::LeftButton)
         {
-            widget->releaseMouse();
             widget->releaseKeyboard();
 
             if (_moving)
@@ -645,7 +594,6 @@ bool FlexHelperImplMac::eventFilter(QObject* obj, QEvent* evt)
             }
 
             _moving = false;
-            _resize = false;
         }
 
         break;
@@ -659,87 +607,25 @@ bool FlexHelperImplMac::eventFilter(QObject* obj, QEvent* evt)
 
         QMouseEvent* event = static_cast<QMouseEvent*>(evt);
 
-        if (_moving || _resize)
+        if (_moving)
         {
             if (widget->testAttribute(Qt::WA_WState_ConfigPending))
             {
                 break;
             }
 
-            int x, y, w, h;
-
             QPoint off = event->globalPos() - _old;
-
-            QSize minSize = widget->minimumSize();
-
-            QRect geom = widget->geometry();
-
-            geom.getRect(&x, &y, &w, &h);
-
-            switch (_hit)
-            {
-            case 1:
-                off.setY(0);
-                if (w - off.x() <= minSize.width()) off.setX(0);
-                geom = QRect(x + off.x(), y, w - off.x(), h);
-                break;
-            case 2:
-                off.setX(0);
-                if (h - off.y() <= minSize.height()) off.setY(0);
-                geom = QRect(x, y + off.y(), w, h - off.y());
-                break;
-            case 3:
-                off.setY(0);
-                if (w + off.x() <= minSize.width()) off.setX(0);
-                geom = QRect(x, y, w + off.x(), h);
-                break;
-            case 4:
-                off.setX(0);
-                if (h + off.y() <= minSize.height()) off.setY(0);
-                geom = QRect(x, y, w, h + off.y());
-                break;
-            case 5:
-                if (w - off.x() <= minSize.width()) off.setX(0);
-                if (h - off.y() <= minSize.height()) off.setY(0);
-                geom = QRect(x + off.x(), y + off.y(), w - off.x(), h - off.y());
-                break;
-            case 6:
-                if (w + off.x() <= minSize.width()) off.setX(0);
-                if (h - off.y() <= minSize.height()) off.setY(0);
-                geom = QRect(x, y + off.y(), w + off.x(), h - off.y());
-                break;
-            case 7:
-                if (w + off.x() <= minSize.width()) off.setX(0);
-                if (h + off.y() <= minSize.height()) off.setY(0);
-                geom = QRect(x, y, w + off.x(), h + off.y());
-                break;
-            case 8:
-                if (w - off.x() <= minSize.width()) off.setX(0);
-                if (h + off.y() <= minSize.height()) off.setY(0);
-                geom = QRect(x + off.x(), y, w - off.x(), h + off.y());
-                break;
-            }
 
             if (_hit == 0)
             {
                 widget->move(widget->pos() + off);
             }
-            else
-            {
-                if (!off.isNull())
-                {
-                    widget->setGeometry(geom);
-                }
-            }
 
-            if (!off.isNull())
-            {
-                _old += off;
-            }
+            _old = event->globalPos();
         }
         else
         {
-            hittest(widget, widget->mapFromGlobal(event->globalPos()));
+            hittest(widget, event->pos());
         }
 
         break;
@@ -817,6 +703,7 @@ FlexHelper::FlexHelper(QWidget* parent) : QObject(parent), impl(new FlexHelperIm
 FlexHelper::FlexHelper(QWidget* parent) : QObject(parent), impl(new FlexHelperImplMac)
 {
     auto d = static_cast<FlexHelperImplMac*>(impl.data());
+    d->_handler = new FlexHandler(parent, parent);
     d->_buttons = new FlexButtons(parent, parent);
     d->_extents = new FlexExtents(parent, parent);
     connect(d->_extents->_dockPullButton, SIGNAL(clicked()), SLOT(on_button_clicked()));
@@ -824,7 +711,6 @@ FlexHelper::FlexHelper(QWidget* parent) : QObject(parent), impl(new FlexHelperIm
     connect(d->_buttons->_clsButton, SIGNAL(clicked()), SLOT(on_button_clicked()));
     connect(d->_buttons->_maxButton, SIGNAL(clicked()), SLOT(on_button_clicked()));
     connect(d->_buttons->_minButton, SIGNAL(clicked()), SLOT(on_button_clicked()));
-    parent->setMouseTracking(true);
     parent->installEventFilter(this);
 }
 #endif

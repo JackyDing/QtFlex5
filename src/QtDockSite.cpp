@@ -561,10 +561,14 @@ bool DockSite::eventFilter(QObject* obj, QEvent* evt)
 
                 QApplication::sendPostedEvents();
 
+#ifdef Q_OS_MAC
+                flexWidget->grabMouse();
+#endif
+
 #ifdef Q_OS_WIN
                 SendMessage((HWND)flexWidget->effectiveWinId(), WM_NCLBUTTONDOWN, HTCAPTION, MAKELONG(pos.x(), pos.y()));
 #else
-                QApplication::postEvent(flexWidget, new QMouseEvent(mouse->type(), flexWidget->mapFromGlobal(pos), mouse->button(), mouse->buttons(), mouse->modifiers()));
+                QApplication::sendEvent(flexWidget, new QMouseEvent(QEvent::MouseButtonPress, flexWidget->mapFromGlobal(pos), pos, Qt::LeftButton, mouse->buttons(), mouse->modifiers()));
 #endif
                 return true;
             }
@@ -655,7 +659,7 @@ void DockSite::mousePressEvent(QMouseEvent* evt)
     {
         if (titleBarRect.contains(evt->pos()))
         {
-            impl->_startPoint = evt->pos(); 
+            impl->_startPoint = evt->pos();
 
             auto tempWidget = flexWidget();
 
@@ -699,10 +703,14 @@ void DockSite::mouseMoveEvent(QMouseEvent* evt)
 
         QApplication::sendPostedEvents();
 
+#ifdef Q_OS_MAC
+        flexWidget->grabMouse();
+#endif
+
 #ifdef Q_OS_WIN
         SendMessage((HWND)flexWidget->effectiveWinId(), WM_NCLBUTTONDOWN, HTCAPTION, MAKELONG(pos.x(), pos.y()));
 #else
-        QApplication::postEvent(flexWidget, new QMouseEvent(evt->type(), flexWidget->mapFromGlobal(pos), evt->button(), evt->buttons(), evt->modifiers()));
+        QApplication::sendEvent(flexWidget, new QMouseEvent(QEvent::MouseButtonPress, flexWidget->mapFromGlobal(pos), pos, Qt::LeftButton, evt->buttons(), evt->modifiers()));
 #endif
     }
 }

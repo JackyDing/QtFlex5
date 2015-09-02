@@ -29,6 +29,15 @@
 #pragma comment(lib, "shell32.lib")
 #endif
 
+class FlexWidgetHole : public QWidget
+{
+public:
+    FlexWidgetHole(QWidget* parent = nullptr) : QWidget(parent)
+    {
+        setAttribute(Qt::WA_TransparentForMouseEvents);
+    }
+};
+
 class FlexWidgetImpl
 {
 public:
@@ -833,8 +842,7 @@ FlexWidget::FlexWidget(Flex::ViewMode viewMode, QWidget* parent, Qt::WindowFlags
         connect(impl->_helper, SIGNAL(clicked(Flex::Button, bool*)), SLOT(on_titleBar_buttonClicked(Flex::Button, bool*)));
     }
 
-    impl->_hole = new QWidget();
-    impl->_hole->setAttribute(Qt::WA_TransparentForMouseEvents);
+    impl->_hole = new FlexWidgetHole();
 
     impl->_sideContainer->setHandleWidth(3);
     impl->_sideContainer->addWidget(impl->_hole);
@@ -846,7 +854,10 @@ FlexWidget::FlexWidget(Flex::ViewMode viewMode, QWidget* parent, Qt::WindowFlags
         impl->_siteContainer->setStretchFactor(0, 1);
     }
 
+#ifdef Q_OS_WIN
     winId();
+#endif
+
 }
 
 FlexWidget::~FlexWidget()
