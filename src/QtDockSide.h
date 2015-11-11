@@ -9,7 +9,7 @@ class QT_FLEX_API DockSide : public QWidget
 {
     Q_OBJECT
 public:
-    DockSide(Flex::Direction direction, QWidget* parent);
+    DockSide(Flex::Direction direction, QWidget* container, QWidget* parent);
     ~DockSide();
     
 Q_SIGNALS:
@@ -47,6 +47,12 @@ public:
     void doneCurrent();
 
 public:
+    bool load(const QJsonObject& object);
+
+public:
+    bool save(QJsonObject& object);
+
+protected:
     void paintEvent(QPaintEvent*);
     void mouseMoveEvent(QMouseEvent*);
     void mousePressEvent(QMouseEvent*);

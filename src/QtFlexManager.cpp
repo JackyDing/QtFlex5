@@ -4,6 +4,9 @@
 #include "QtDockSite.h"
 #include <QtCore/QAbstractNativeEventFilter>
 #include <QtCore/QVariant>
+#include <QtCore/QJsonObject>
+#include <QtCore/QJsonArray>
+#include <QtCore/QJsonDocument>
 #include <QtGui/QIcon>
 #include <QtWidgets/QApplication>
 
@@ -104,33 +107,109 @@ FlexManager* FlexManager::instance()
     static FlexManager manager; return &manager;
 }
 
-FlexWidget* FlexManager::createFlexWidget(Flex::ViewMode viewMode, QWidget* parent, Qt::WindowFlags flags)
+FlexWidget* FlexManager::createFlexWidget(Flex::ViewMode viewMode, QWidget* parent, Qt::WindowFlags flags, const QString& flexWidgetName)
 {
     FlexWidget* widget = new FlexWidget(viewMode, parent, flags);
+    widget->setObjectName(flexWidgetName);
     connect(widget, SIGNAL(destroyed(QObject*)), SLOT(on_flexWidget_destroyed(QObject*)));
     connect(widget, SIGNAL(enterMove(QObject*)), SLOT(on_flexWidget_enterMove(QObject*)));
     connect(widget, SIGNAL(leaveMove(QObject*)), SLOT(on_flexWidget_leaveMove(QObject*)));
     connect(widget, SIGNAL(moving(QObject*)), SLOT(on_flexWidget_moving(QObject*)));
+    connect(widget, SIGNAL(destroying(FlexWidget*)), SIGNAL(flexWidgetDestroying(FlexWidget*)));
     widget->installEventFilter(this);
     impl->_flexWidgets.append(widget);
+    emit flexWidgetCreated(widget);
     return widget;
 }
 
-DockWidget* FlexManager::createDockWidget(Flex::ViewMode viewMode, QWidget* parent, Qt::WindowFlags flags)
+DockWidget* FlexManager::createDockWidget(Flex::ViewMode viewMode, QWidget* parent, Qt::WindowFlags flags, const QString& dockWidgetName)
 {
     DockWidget* widget = new DockWidget(viewMode, parent, flags);
+    widget->setObjectName(dockWidgetName);
     connect(widget, SIGNAL(destroyed(QObject*)), SLOT(on_dockWidget_destroyed(QObject*)));
     connect(widget, SIGNAL(enterMove(QObject*)), SLOT(on_dockWidget_enterMove(QObject*)));
     connect(widget, SIGNAL(leaveMove(QObject*)), SLOT(on_dockWidget_leaveMove(QObject*)));
     connect(widget, SIGNAL(moving(QObject*)), SLOT(on_dockWidget_moving(QObject*)));
+    connect(widget, SIGNAL(destroying(DockWidget*)), SIGNAL(dockWidgetDestroying(DockWidget*)));
     widget->installEventFilter(this);
     impl->_dockWidgets.append(widget);
+    emit dockWidgetCreated(widget);
     return widget;
 }
 
 QIcon FlexManager::icon(Flex::Button button)
 {
     return impl->_buttonIcons[button];
+}
+
+void FlexManager::close()
+{
+    for (auto iter = impl->_dockWidgets.begin(); iter != impl->_dockWidgets.end(); ++iter)
+    {
+        if ((*iter)->isWindow())
+        {
+            (*iter)->deleteLater();
+        }
+    }
+    for (auto iter = impl->_flexWidgets.begin(); iter != impl->_flexWidgets.end(); ++iter)
+    {
+        if ((*iter)->isWindow())
+        {
+            (*iter)->deleteLater();
+        }
+    }
+}
+
+bool FlexManager::load(const QByteArray& content, const QMap<QString, QWidget*>& parents)
+{
+    close();
+
+    QJsonObject object = QJsonDocument::fromJson(content).object();
+
+    QJsonArray flexWidgetObjects = object["flexWidgets"].toArray();
+
+    for (int i = 0; i < flexWidgetObjects.size(); ++i)
+    {
+        QJsonObject flexWidgetObject = flexWidgetObjects[i].toObject();
+
+        Flex::ViewMode viewMode = (Flex::ViewMode)flexWidgetObject["viewMode"].toInt();
+        QWidget* parent = parents.value(flexWidgetObject["parent"].toString(), nullptr);
+        Qt::WindowFlags flags = (Qt::WindowFlags)flexWidgetObject["windowFlags"].toInt();
+        QString flexWidgetName = flexWidgetObject["flexWidgetName"].toString();
+
+        FlexWidget* flexWidget = createFlexWidget(viewMode, parent, Flex::widgetFlags(), flexWidgetName);
+
+        flexWidget->load(flexWidgetObject);
+    }
+
+    return true;
+}
+
+QByteArray FlexManager::save()
+{
+    QJsonObject object;
+
+    QJsonArray flexWidgetObjects;
+
+    for (int i = 0; i < impl->_flexWidgets.size(); ++i)
+    {
+        FlexWidget* flexWidget = impl->_flexWidgets[i];
+
+        QJsonObject flexWidgetObject;
+
+        flexWidgetObject["viewMode"] = (int)flexWidget->viewMode();
+        flexWidgetObject["parent"] = flexWidget->parentWidget() ? flexWidget->parentWidget()->objectName() : "";
+        flexWidgetObject["windowFlags"] = (int)Flex::windowFlags(flexWidget->viewMode());
+        flexWidgetObject["flexWidgetName"] = flexWidget->objectName();
+
+        flexWidget->save(flexWidgetObject);
+
+        flexWidgetObjects.append(flexWidgetObject);
+    }
+
+    object["flexWidgets"] = flexWidgetObjects;
+
+    return QJsonDocument(object).toJson();
 }
 
 bool FlexManager::eventFilter(QObject* obj, QEvent* evt)

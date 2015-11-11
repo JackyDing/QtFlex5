@@ -56,6 +56,12 @@ public:
 public:
     void activate();
 
+public:
+    bool load(const QJsonObject& object);
+
+public:
+    bool save(QJsonObject& object);
+
 protected:
     bool event(QEvent*);
     bool eventFilter(QObject*, QEvent*);

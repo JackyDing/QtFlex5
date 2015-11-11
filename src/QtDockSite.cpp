@@ -3,6 +3,8 @@
 #include "QtFlexWidget.h"
 #include "QtFlexHelper.h"
 #include "QtFlexManager.h"
+#include <QtCore/QJsonObject>
+#include <QtCore/QJsonArray>
 #include <QtGui/QResizeEvent>
 #include <QtGui/QMouseEvent>
 #include <QtGui/QPainter>
@@ -172,6 +174,9 @@ void DockSiteImpl::adjust(DockSite* self, DockWidget* widget)
 
     QPalette tabPalette = _tabBar->palette();
 
+    auto item0 = arranger->takeAt(0);
+    auto item1 = arranger->takeAt(0);
+
     if (_persistent || !widget || widget->viewMode() == Flex::FileView || widget->viewMode() == Flex::FilePagesView)
     {
         tabPalette.setColor(QPalette::Active, QPalette::Highlight, QColor("#FFF29D"));
@@ -181,8 +186,19 @@ void DockSiteImpl::adjust(DockSite* self, DockWidget* widget)
         tabPalette.setColor(QPalette::Active, QPalette::WindowText, QColor("#000000"));
         tabPalette.setColor(QPalette::Inactive, QPalette::WindowText, QColor("#FFFFFF"));
         arranger->setContentsMargins(0, 0, 0, 0);
-        arranger->addLayout(_tabBarLayout, 0);
-        arranger->addLayout(_tabMdiLayout, 1);
+        if (item0 == nullptr)
+        {
+            arranger->addLayout(_tabBarLayout);
+            arranger->addLayout(_tabMdiLayout);
+        }
+        else
+        {
+            if (item0->layout() != _tabBarLayout)
+            {
+                arranger->addItem(item1);
+                arranger->addItem(item0);
+            }
+        }
         _tabBar->setTabsClosable(true);
         _tabBar->setShape(QTabBar::RoundedNorth);
         _tabBar->show();
@@ -196,8 +212,19 @@ void DockSiteImpl::adjust(DockSite* self, DockWidget* widget)
         tabPalette.setColor(QPalette::Active, QPalette::WindowText, QColor("#000000"));
         tabPalette.setColor(QPalette::Inactive, QPalette::WindowText, QColor("#FFFFFF"));
         arranger->setContentsMargins(0, 0, 0, 0);
-        arranger->addLayout(_tabMdiLayout, 1);
-        arranger->addLayout(_tabBarLayout, 0);
+        if (item0 == nullptr)
+        {
+            arranger->addLayout(_tabMdiLayout);
+            arranger->addLayout(_tabBarLayout);
+        }
+        else
+        {
+            if (item0->layout() != _tabMdiLayout)
+            {
+                arranger->addItem(item1);
+                arranger->addItem(item0);
+            }
+        }
         _tabBar->setTabsClosable(false);
         _tabBar->setShape(QTabBar::RoundedSouth);
         _tabBar->hide();
@@ -470,6 +497,61 @@ void DockSite::setActive(bool active)
 void DockSite::activate()
 {
     setFocus();
+}
+
+bool DockSite::load(const QJsonObject& object)
+{
+    setObjectName(object["objectName"].toString());
+    setWindowTitle(object["windowTitle"].toString());
+    setBaseSize(object["baseW"].toInt(0), object["baseH"].toInt(0));
+
+    impl->_persistent = object["persistent"].toBool(false);
+
+    QJsonArray dockWidgetObjects = object["widgets"].toArray();
+
+    for (int i = 0; i < dockWidgetObjects.size(); ++i)
+    {
+        QJsonObject dockWidgetObject = dockWidgetObjects[i].toObject();
+
+        Flex::ViewMode viewMode = (Flex::ViewMode)dockWidgetObject["viewMode"].toInt();
+
+        QString dockWidgetName = dockWidgetObject["dockWidgetName"].toString();
+
+        DockWidget* dockWidget = FlexManager::instance()->createDockWidget(viewMode, this, Flex::widgetFlags(), dockWidgetName);
+
+        dockWidget->load(dockWidgetObject);
+
+        addWidget(dockWidget);
+    }
+
+    return true;
+}
+
+bool DockSite::save(QJsonObject& object)
+{
+    QSize baseSize = this->baseSize();
+
+    object["objectName"] = objectName();
+    object["windowTitle"] = windowTitle();
+    object["baseW"] = baseSize.width();
+    object["baseH"] = baseSize.height();
+
+    object["persistent"] = impl->_persistent;
+
+    QJsonArray dockWidgetObjects;
+
+    for (int i = 0; i < impl->_tabMdi->count(); ++i)
+    {
+        QJsonObject dockWidgetObject;
+
+        qobject_cast<DockWidget*>(impl->_tabMdi->widget(i))->save(dockWidgetObject);
+
+        dockWidgetObjects.append(dockWidgetObject);
+    }
+
+    object["widgets"] = dockWidgetObjects;
+
+    return true;
 }
 
 bool DockSite::event(QEvent* evt)

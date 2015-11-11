@@ -1,5 +1,7 @@
 #include "QtDockSide.h"
 #include "QtDockSite.h"
+#include <QtCore/QJsonObject>
+#include <QtCore/QJsonArray>
 #include <QtGui/QPainter>
 #include <QtGui/QMouseEvent>
 
@@ -21,6 +23,7 @@ public:
     int _curr;
     Flex::Direction _direction;
     QList<DockSite*> _dockSites;
+    QWidget* _container;
 };
 
 void DockSideImpl::hittest(DockSide* self, const QPoint& pos)
@@ -51,11 +54,12 @@ void DockSideImpl::hittest(DockSide* self, const QPoint& pos)
     }
 }
 
-DockSide::DockSide(Flex::Direction direction, QWidget* parent) : QWidget(parent), impl(new DockSideImpl)
+DockSide::DockSide(Flex::Direction direction, QWidget* container, QWidget* parent) : QWidget(parent), impl(new DockSideImpl)
 {
     setMouseTracking(true);
     setFocusPolicy(Qt::NoFocus);
 
+    impl->_container = container;
     impl->_direction = direction;
 
     switch (impl->_direction)
@@ -298,3 +302,36 @@ void DockSide::doneCurrent()
         emit currentChanged(this, curr, nullptr);
     }
 }
+
+bool DockSide::load(const QJsonObject& object)
+{
+    setSpace(object["space"].toInt());
+    setHeadOffset(object["headOffset"].toInt());
+    setTailOffset(object["tailOffset"].toInt());
+    QJsonArray dockSiteObjects = object["dockSites"].toArray();
+    for (int i = 0; i < dockSiteObjects.size(); ++i)
+    {
+        QJsonObject dockSiteObject = dockSiteObjects[i].toObject();
+        DockSite* dockSite = new DockSite(nullptr, QSize(), impl->_container);
+        dockSite->load(dockSiteObject);
+        attachDockSite(dockSite);
+    }
+    return true;
+}
+
+bool DockSide::save(QJsonObject& object)
+{
+    object["space"] = impl->_space;
+    object["headOffset"] = impl->_headOffset;
+    object["tailOffset"] = impl->_tailOffset;
+    QJsonArray dockSites;
+    for (int i = 0; i < impl->_dockSites.size(); ++i)
+    {
+        QJsonObject dockSite;
+        impl->_dockSites[i]->save(dockSite);
+        dockSites.append(dockSite);
+    }
+    object["dockSites"] = dockSites;
+    return true;
+}
+

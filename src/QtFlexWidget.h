@@ -18,6 +18,7 @@ Q_SIGNALS:
     void enterMove(QObject*);
     void leaveMove(QObject*);
     void moving(QObject*);
+    void destroying(FlexWidget*);
 
 public:
     QSize sizeHint() const;
@@ -53,6 +54,9 @@ public:
     bool removeDockSite(DockSite* dockSite);
 
 public:
+    void clearDockSites();
+
+public:
     bool isAdjusting() const;
 
 public:
@@ -78,6 +82,12 @@ public:
     void makeSiteAutoHide(DockSite* dockSite);
     void makeSiteDockShow(DockSite* dockSite);
     void showSiteDockPull(DockSite* dockSite);
+
+public:
+    bool load(const QJsonObject& object);
+
+public:
+    bool save(QJsonObject& object);
 
 protected:
     bool event(QEvent* evt);

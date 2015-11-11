@@ -1,6 +1,8 @@
 #include "QtDockWidget.h"
 #include "QtFlexWidget.h"
 #include "QtFlexHelper.h"
+#include <QtCore/QJsonObject>
+#include <QtCore/QJsonArray>
 #include <QtGui/QMoveEvent>
 #include <QtGui/QPainter>
 #include <QtWidgets/QApplication>
@@ -36,6 +38,8 @@ public:
     Flex::ViewMode _viewMode;
     Flex::Features _dockFeatures;
     Flex::Features _siteFeatures;
+    QWidget* _widget;
+    QVBoxLayout* _layout;
     FlexHelper* _helper;
     int _titleBarHeight;
 };
@@ -131,14 +135,22 @@ DockWidget::DockWidget(Flex::ViewMode viewMode, QWidget* parent, Qt::WindowFlags
     setFocusPolicy(Qt::StrongFocus);
     setProperty("Flex", true);
 
+    impl->_widget = new QWidget(this);
+
     impl->_viewMode = viewMode;
 
     impl->update(this);
+
+    impl->_layout = new QVBoxLayout(this);
+    impl->_layout->setContentsMargins(0, 0, 0, 0);
+    impl->_layout->setSpacing(0);
+
+    impl->_layout->addWidget(impl->_widget);
 }
 
 DockWidget::~DockWidget()
 {
-
+    emit destroying(this);
 }
 
 bool DockWidget::event(QEvent* evt)
@@ -263,6 +275,62 @@ void DockWidget::setSiteFeatures(Flex::Features features)
     impl->_siteFeatures = features;
 }
 
+QWidget* DockWidget::widget() const
+{
+    return impl->_widget;
+}
+
+void DockWidget::attachWidget(QWidget* widget)
+{
+    if (impl->_widget != widget)
+    {
+        if (impl->_widget)
+        {
+            delete impl->_layout->takeAt(0);
+        }
+        impl->_layout->addWidget(widget);
+        impl->_widget = widget;
+    }
+    else
+    {
+        Q_ASSERT(false);
+    }
+}
+
+void DockWidget::detachWidget(QWidget* widget)
+{
+    if (impl->_widget == widget)
+    {
+        if (impl->_widget)
+        {
+            delete impl->_layout->takeAt(0);
+        }
+        impl->_widget->setParent(nullptr);
+        impl->_widget = nullptr;
+    }
+    else
+    {
+        Q_ASSERT(false);
+    }
+}
+
+void DockWidget::setWidget(QWidget* widget)
+{
+    if (impl->_widget != widget)
+    {
+        if (impl->_widget)
+        {
+            delete impl->_layout->takeAt(0);
+        }
+
+        impl->_widget->deleteLater();
+
+        impl->_layout->addWidget(widget);
+
+        impl->_widget = widget;
+    }
+}
+
 bool DockWidget::isFloating() const
 {
     return isTopLevel();
@@ -271,6 +339,24 @@ bool DockWidget::isFloating() const
 bool DockWidget::isActive() const
 {
     return isActiveWindow();
+}
+
+bool DockWidget::load(const QJsonObject& object)
+{
+    setWindowTitle(object["dockWidgetName"].toString());
+    setViewMode((Flex::ViewMode)object["viewMode"].toInt());
+    setDockFeatures((Flex::Features)object["dockFeatures"].toInt());
+    setSiteFeatures((Flex::Features)object["siteFeatures"].toInt());
+    return true;
+}
+
+bool DockWidget::save(QJsonObject& object)
+{
+    object["dockWidgetName"] = windowTitle();
+    object["viewMode"] = (int)viewMode();
+    object["dockFeatures"] = (int)dockFeatures();
+    object["siteFeatures"] = (int)siteFeatures();
+    return true;
 }
 
 void DockWidget::on_titleBar_buttonClicked(Flex::Button button, bool*)

@@ -25,6 +25,14 @@ public:
     void setSiteFeatures(Flex::Features features);
 
 public:
+    QWidget* widget() const;
+    void attachWidget(QWidget* widget);
+    void detachWidget(QWidget* widget);
+
+public:
+    void setWidget(QWidget* widget);
+
+public:
     QSize sizeHint() const;
 
 public:
@@ -35,12 +43,19 @@ Q_SIGNALS:
     void leaveMove(QObject*);
     void moving(QObject*);
     void activated(DockWidget*);
+    void destroying(DockWidget*);
 
 public:
     bool isFloating() const;
 
 public:
     bool isActive() const;
+
+public:
+    bool load(const QJsonObject& object);
+
+public:
+    bool save(QJsonObject& object);
 
 protected:
     bool event(QEvent* evt);

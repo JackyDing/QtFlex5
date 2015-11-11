@@ -179,16 +179,29 @@ Q_SIGNALS:
 
 Q_SIGNALS:
     void dockSiteActivated(DockSite*);
+    void flexWidgetCreated(FlexWidget*);
+    void dockWidgetCreated(DockWidget*);
+    void flexWidgetDestroying(FlexWidget*);
+    void dockWidgetDestroying(DockWidget*);
 
 public:
-    FlexWidget* createFlexWidget(Flex::ViewMode viewMode, QWidget* parent, Qt::WindowFlags flags = Flex::widgetFlags());
-    DockWidget* createDockWidget(Flex::ViewMode viewMode, QWidget* parent, Qt::WindowFlags flags = Flex::widgetFlags());
+    FlexWidget* createFlexWidget(Flex::ViewMode viewMode, QWidget* parent, Qt::WindowFlags flags = Flex::widgetFlags(), const QString& flexWidgetName = QString());
+    DockWidget* createDockWidget(Flex::ViewMode viewMode, QWidget* parent, Qt::WindowFlags flags = Flex::widgetFlags(), const QString& dockWidgetName = QString());
 
 public:
     static FlexManager* instance();
 
 public:
     QIcon icon(Flex::Button button);
+
+public:
+    void close();
+
+public:
+    bool load(const QByteArray& content, const QMap<QString, QWidget*>& parents);
+
+public:
+    QByteArray save();
 
 private:
     bool eventFilter(QObject*, QEvent*);
