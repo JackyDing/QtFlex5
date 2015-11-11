@@ -5,4 +5,4 @@ Flexible and dockable widgets for Qt5, like Visual Studio 201x user interface.
 Currently, works on windows platform with DWM on only, cross-platform support is being scheduled.
 
 ## Screenshots
-![image](https://github.com/JackyDing/QtFlex5/raw/master/screenshots/Screenshot_0.png)
+![image](https://raw.githubusercontent.com/JackyDing/QtFlex5/master/screenshots/Screenshot_0.png)
