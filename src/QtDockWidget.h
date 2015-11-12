@@ -25,9 +25,15 @@ public:
     void setSiteFeatures(Flex::Features features);
 
 public:
+    DockSite* dockSite() const;
+
+public:
     QWidget* widget() const;
     void attachWidget(QWidget* widget);
     void detachWidget(QWidget* widget);
+
+public:
+    void activate();
 
 public:
     void setWidget(QWidget* widget);

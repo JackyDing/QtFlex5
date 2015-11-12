@@ -18,13 +18,22 @@ public:
     bool addWidget(DockWidget* widget);
 
 public:
+    void setCurrentWidget(DockWidget* widget);
+ 
+public:
     int currentIndex() const;
+
+public:
+    void setCurrentIndex(int index);
 
 public:
     int count() const;
 
 public:
     DockWidget* widget(int index) const;
+
+public:
+    int indexOf(DockWidget* widget) const;
 
 public:
     QList<DockWidget*> widgets() const;

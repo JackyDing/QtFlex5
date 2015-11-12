@@ -1,4 +1,5 @@
 #include "QtDockWidget.h"
+#include "QtDockSite.h"
 #include "QtFlexWidget.h"
 #include "QtFlexHelper.h"
 #include <QtCore/QJsonObject>
@@ -275,6 +276,16 @@ void DockWidget::setSiteFeatures(Flex::Features features)
     impl->_siteFeatures = features;
 }
 
+DockSite* DockWidget::dockSite() const
+{
+    QWidget* tempWidget = parentWidget();
+    while (tempWidget && !qobject_cast<DockSite*>(tempWidget))
+    {
+        tempWidget = tempWidget->parentWidget();
+    }
+    return qobject_cast<DockSite*>(tempWidget);
+}
+
 QWidget* DockWidget::widget() const
 {
     return impl->_widget;
@@ -328,6 +339,27 @@ void DockWidget::setWidget(QWidget* widget)
         impl->_layout->addWidget(widget);
 
         impl->_widget = widget;
+    }
+}
+
+void DockWidget::activate()
+{
+    QWidget* window = this->window();
+
+    if (!isFloating() && !window->isActiveWindow())
+    {
+        window->activateWindow();
+    }
+
+    DockSite* dockSite = this->dockSite();
+
+    if (dockSite)
+    {
+        dockSite->setCurrentWidget(this);
+    }
+    else
+    {
+        setFocus();
     }
 }
 

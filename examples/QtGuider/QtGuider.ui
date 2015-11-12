@@ -48,7 +48,10 @@
     <property name="title">
      <string>&amp;View</string>
     </property>
-    <addaction name="action_Show"/>
+    <addaction name="action_View_N"/>
+    <addaction name="action_View_0"/>
+    <addaction name="action_View_1"/>
+    <addaction name="action_View_2"/>
    </widget>
    <addaction name="menu_File"/>
    <addaction name="menu_Edit"/>
@@ -105,12 +108,27 @@
     <string>Ctrl+A</string>
    </property>
   </action>
-  <action name="action_Show">
+  <action name="action_View_N">
    <property name="text">
-    <string>Show</string>
+    <string>View_N</string>
    </property>
    <property name="shortcut">
     <string>Ctrl+S</string>
+   </property>
+  </action>
+  <action name="action_View_0">
+   <property name="text">
+    <string>View-0</string>
+   </property>
+  </action>
+  <action name="action_View_1">
+   <property name="text">
+    <string>View-1</string>
+   </property>
+  </action>
+  <action name="action_View_2">
+   <property name="text">
+    <string>View-2</string>
    </property>
   </action>
  </widget>

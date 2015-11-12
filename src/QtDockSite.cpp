@@ -201,6 +201,7 @@ void DockSiteImpl::adjust(DockSite* self, DockWidget* widget)
         }
         _tabBar->setTabsClosable(true);
         _tabBar->setShape(QTabBar::RoundedNorth);
+        _tabBar->setFixedHeight(22);
         _tabBar->show();
     }
     else
@@ -227,6 +228,7 @@ void DockSiteImpl::adjust(DockSite* self, DockWidget* widget)
         }
         _tabBar->setTabsClosable(false);
         _tabBar->setShape(QTabBar::RoundedSouth);
+        _tabBar->setFixedHeight(21);
         _tabBar->hide();
     }
 
@@ -451,6 +453,21 @@ int DockSite::currentIndex() const
     return impl->_tabMdi->currentIndex();
 }
 
+void DockSite::setCurrentIndex(int index)
+{
+    if (index == impl->_tabMdi->currentIndex())
+    {
+        if (index != -1)
+        {
+            impl->_tabMdi->widget(index)->setFocus();
+        }
+    }
+    else
+    {
+        impl->_tabMdi->setCurrentIndex(index);
+    }
+}
+
 int DockSite::count() const
 {
     return impl->_tabMdi->count();
@@ -459,6 +476,11 @@ int DockSite::count() const
 DockWidget* DockSite::widget(int index) const
 {
     return qobject_cast<DockWidget*>(impl->_tabMdi->widget(index));
+}
+
+int DockSite::indexOf(DockWidget* widget) const
+{
+    return impl->_tabMdi->indexOf(widget);
 }
 
 QList<DockWidget*> DockSite::widgets() const
@@ -474,6 +496,18 @@ QList<DockWidget*> DockSite::widgets() const
 void DockSite::removeWidgetAt(int index)
 {
     impl->_tabBar->closeTab(index);
+}
+
+void DockSite::setCurrentWidget(DockWidget* widget)
+{
+    if (impl->_tabMdi->currentWidget() != widget)
+    {
+        impl->_tabMdi->setCurrentWidget(widget);
+    }
+    if (widget)
+    {
+        widget->setFocus();
+    }
 }
 
 bool DockSite::isActive() const
@@ -496,6 +530,8 @@ void DockSite::setActive(bool active)
 
 void DockSite::activate()
 {
+    window()->activateWindow();
+
     setFocus();
 }
 

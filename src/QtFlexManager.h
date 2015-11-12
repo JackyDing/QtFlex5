@@ -188,6 +188,18 @@ public:
     FlexWidget* createFlexWidget(Flex::ViewMode viewMode, QWidget* parent, Qt::WindowFlags flags = Flex::widgetFlags(), const QString& flexWidgetName = QString());
     DockWidget* createDockWidget(Flex::ViewMode viewMode, QWidget* parent, Qt::WindowFlags flags = Flex::widgetFlags(), const QString& dockWidgetName = QString());
 
+    bool hasFlexWidget(const QString& flexWidgetName) const;
+    bool hasDockWidget(const QString& dockWidgetName) const;
+
+    FlexWidget* flexWidget(const QString& flexWidgetName) const;
+    DockWidget* dockWidget(const QString& dockWidgetName) const;
+
+    int flexWidgetCount() const;
+    int dockWidgetCount() const;
+
+    FlexWidget* flexWidgetAt(int index) const;
+    DockWidget* dockWidgetAt(int index) const;
+
 public:
     static FlexManager* instance();
 

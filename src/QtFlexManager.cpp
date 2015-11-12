@@ -137,6 +137,50 @@ DockWidget* FlexManager::createDockWidget(Flex::ViewMode viewMode, QWidget* pare
     return widget;
 }
 
+bool FlexManager::hasFlexWidget(const QString& flexWidgetName) const
+{
+    return std::find_if(impl->_flexWidgets.begin(), impl->_flexWidgets.end(), [&](FlexWidget* flexWidget) { return flexWidget->objectName() == flexWidgetName; }) != impl->_flexWidgets.end();
+}
+
+bool FlexManager::hasDockWidget(const QString& dockWidgetName) const
+{
+    return std::find_if(impl->_dockWidgets.begin(), impl->_dockWidgets.end(), [&](DockWidget* dockWidget) { return dockWidget->objectName() == dockWidgetName; }) != impl->_dockWidgets.end();
+}
+
+FlexWidget* FlexManager::flexWidget(const QString& flexWidgetName) const
+{
+    auto iter = std::find_if(impl->_flexWidgets.begin(), impl->_flexWidgets.end(), [&](FlexWidget* flexWidget) { return flexWidget->objectName() == flexWidgetName; });
+    return iter != impl->_flexWidgets.end() ? *iter : nullptr;
+}
+
+DockWidget* FlexManager::dockWidget(const QString& dockWidgetName) const
+{
+    auto iter = std::find_if(impl->_dockWidgets.begin(), impl->_dockWidgets.end(), [&](DockWidget* dockWidget) { return dockWidget->objectName() == dockWidgetName; });
+    return iter != impl->_dockWidgets.end() ? *iter : nullptr;
+}
+
+int FlexManager::flexWidgetCount() const
+{
+    return (int)impl->_flexWidgets.size();
+}
+
+int FlexManager::dockWidgetCount() const
+{
+    return (int)impl->_dockWidgets.size();
+}
+
+FlexWidget* FlexManager::flexWidgetAt(int index) const
+{
+    Q_ASSERT(index >= 0 && index < impl->_flexWidgets.size());
+    return impl->_flexWidgets[index];
+}
+
+DockWidget* FlexManager::dockWidgetAt(int index) const
+{
+    Q_ASSERT(index >= 0 && index < impl->_dockWidgets.size());
+    return impl->_dockWidgets[index];
+}
+
 QIcon FlexManager::icon(Flex::Button button)
 {
     return impl->_buttonIcons[button];

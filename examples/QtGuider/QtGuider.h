@@ -22,8 +22,11 @@ private slots:
     void on_action_Undo_triggered();
     void on_action_Redo_triggered();
     void on_action_Open_triggered();
-    void on_action_Show_triggered();
     void on_action_Exit_triggered();
+    void on_action_View_N_triggered();
+    void on_action_View_0_triggered();
+    void on_action_View_1_triggered();
+    void on_action_View_2_triggered();
 
 private:
     friend class QtGuiderImpl;
