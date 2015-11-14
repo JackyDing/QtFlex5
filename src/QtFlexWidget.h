@@ -75,6 +75,8 @@ public:
 
     const QList<DockSite*>& dockSites(Flex::Direction direction = Flex::C) const;
 
+    DockSite* dockSite(const QString& name) const;
+
 public:
     bool isFloating() const;
 
@@ -87,7 +89,13 @@ public:
     bool load(const QJsonObject& object);
 
 public:
-    bool save(QJsonObject& object);
+    bool save(QJsonObject& object) const;
+
+public:
+    QByteArray snapshot() const;
+
+public:
+    bool restore(const QByteArray& snapshot, const QString& identifer);
 
 protected:
     bool event(QEvent* evt);

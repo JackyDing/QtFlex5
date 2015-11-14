@@ -91,7 +91,7 @@ void QtCentral::on_flexWidgetDestroying(FlexWidget* flexWidget)
 
 void QtCentral::on_dockWidgetDestroying(DockWidget* dockWidget)
 {
-    if (dockWidget->objectName() == "View-0")
+    if (dockWidget->objectName() == "View-1")
     {
         if (dockWidget->widget() == _widget)
         {
@@ -112,8 +112,18 @@ QtGuider::QtGuider(QWidget *parent, Qt::WindowFlags flags) : QMainWindow(parent,
 
     impl->ui.setupUi(this);
 
+    for (int i = 0; i < 15; i++)
+    {
+        impl->ui.menuFile->addAction(QString("File-%1").arg(i), this, SLOT(actionFile_X_triggered()));
+    }
+
+    for (int i = 0; i < 15; i++)
+    {
+        impl->ui.menuView->addAction(QString("View-%1").arg(i), this, SLOT(actionView_X_triggered()));
+    }
+
     setCentralWidget(new QtCentral(this));
-    
+
     auto docker1 = new QDockWidget("Docker1", this);
     docker1->setWidget(new QWidget(this));
     auto docker2 = new QDockWidget("Docker2", this);
@@ -130,7 +140,57 @@ QtGuider::~QtGuider()
 
 }
 
-void QtGuider::on_action_Open_triggered()
+void QtGuider::openFile_N(int n)
+{
+    QString dockWidgetName = QString("File-%1").arg(n);
+
+    DockWidget* widget = nullptr;
+
+    if ((widget = FlexManager::instance()->dockWidget(dockWidgetName)) != nullptr)
+    {
+        widget->activate();
+    }
+    else
+    {
+        if (!FlexManager::instance()->restore(dockWidgetName))
+        {
+            FlexWidget* flexWidget = FlexManager::instance()->createFlexWidget(Flex::FileView, Flex::parent(Flex::FileView), Flex::windowFlags());
+            DockWidget* dockWidget = FlexManager::instance()->createDockWidget(Flex::FileView, flexWidget, Flex::widgetFlags(), dockWidgetName);
+            dockWidget->setViewMode(Flex::FileView);
+            dockWidget->setWindowTitle(dockWidgetName);
+            flexWidget->addDockWidget(dockWidget);
+            flexWidget->show();
+            flexWidget->move(geometry().center() - flexWidget->rect().center());
+        }
+    }
+}
+
+void QtGuider::openView_N(int n)
+{
+    QString dockWidgetName = QString("View-%1").arg(n);
+
+    DockWidget* widget = nullptr;
+
+    if ((widget = FlexManager::instance()->dockWidget(dockWidgetName)) != nullptr)
+    {
+        widget->activate();
+    }
+    else
+    {
+        if (!FlexManager::instance()->restore(dockWidgetName))
+        {
+            FlexWidget* flexWidget = FlexManager::instance()->createFlexWidget(Flex::ToolView, Flex::parent(Flex::ToolView), Flex::windowFlags());
+            DockWidget* dockWidget = FlexManager::instance()->createDockWidget(Flex::ToolView, flexWidget, Flex::widgetFlags(), dockWidgetName);
+            dockWidget->setViewMode(Flex::ToolView);
+            dockWidget->setWindowTitle(dockWidgetName);
+            flexWidget->addDockWidget(dockWidget);
+            flexWidget->show();
+            flexWidget->move(geometry().center() - flexWidget->rect().center());
+        }
+    }
+}
+
+void QtGuider::on_actionFile_N_triggered()
 {
     static int i = 0;
     for (;; i++)
@@ -142,68 +202,13 @@ void QtGuider::on_action_Open_triggered()
             continue;
         }
 
-        FlexWidget* flexWidget = FlexManager::instance()->createFlexWidget(Flex::FileView, Flex::parent(Flex::FileView), Flex::windowFlags());
-        DockWidget* dockWidget = FlexManager::instance()->createDockWidget(Flex::FileView, flexWidget, Flex::widgetFlags(), dockWidgetName);
-        dockWidget->setViewMode(Flex::FileView);
-        dockWidget->setWindowTitle(dockWidgetName);
-        flexWidget->addDockWidget(dockWidget);
-        flexWidget->show();
-        flexWidget->move(geometry().center() - flexWidget->rect().center());
+        openFile_N(i);
 
         break;
     }
 }
 
-void QtGuider::on_action_Undo_triggered()
-{
-    static int i = 0;
-    for (;; i++)
-    {
-        QString dockWidgetName = QString("File-%1").arg(i);
-
-        if (FlexManager::instance()->hasDockWidget(dockWidgetName))
-        {
-            continue;
-        }
-
-        DockWidget* dockWidget = FlexManager::instance()->createDockWidget(Flex::FileView, Flex::parent(Flex::FileView), Flex::windowFlags());
-        dockWidget->setViewMode(Flex::FileView);
-        dockWidget->setWindowTitle(dockWidgetName);
-        dockWidget->show();
-        dockWidget->move(geometry().center() - dockWidget->rect().center());
-
-        break;
-    }
-}
-
-void QtGuider::on_action_Redo_triggered()
-{
-    static int i = 0;
-    for (;; i++)
-    {
-        QString dockWidgetName = QString("Tool-%1").arg(i);
-
-        if (FlexManager::instance()->hasDockWidget(dockWidgetName))
-        {
-            continue;
-        }
-
-        DockWidget* dockWidget = FlexManager::instance()->createDockWidget(Flex::ToolView, Flex::parent(Flex::ToolView), Flex::windowFlags());
-        dockWidget->setViewMode(Flex::ToolView);
-        dockWidget->setWindowTitle(dockWidgetName);
-        dockWidget->show();
-        dockWidget->move(geometry().center() - dockWidget->rect().center());
-
-        break;
-    }
-}
-
-void QtGuider::on_action_Exit_triggered()
-{
-    close();
-}
-
-void QtGuider::on_action_View_N_triggered()
+void QtGuider::on_actionView_N_triggered()
 {
     static int i = 0;
     for (;; i++)
@@ -215,75 +220,69 @@ void QtGuider::on_action_View_N_triggered()
             continue;
         }
 
-        FlexWidget* flexWidget = FlexManager::instance()->createFlexWidget(Flex::ToolView, Flex::parent(Flex::ToolView), Flex::windowFlags());
-        DockWidget* dockWidget = FlexManager::instance()->createDockWidget(Flex::ToolView, flexWidget, Flex::widgetFlags(), dockWidgetName);
-        dockWidget->setViewMode(Flex::ToolView);
-        dockWidget->setWindowTitle(dockWidgetName);
-        flexWidget->addDockWidget(dockWidget);
-        flexWidget->show();
-        flexWidget->move(geometry().center() - flexWidget->rect().center());
+        openView_N(i);
 
         break;
     }
 }
 
-void QtGuider::on_action_View_0_triggered()
+void QtGuider::actionFile_X_triggered()
 {
-    DockWidget* widget = nullptr;
+    openFile_N(static_cast<QAction*>(sender())->text().split("-")[1].toInt());
+}
 
-    if ((widget = FlexManager::instance()->dockWidget("View-0")) != nullptr)
+void QtGuider::actionView_X_triggered()
+{
+    openView_N(static_cast<QAction*>(sender())->text().split("-")[1].toInt());
+}
+
+void QtGuider::on_actionEdit_Undo_triggered()
+{
+    static int i = 0;
+    for (;; i++)
     {
-        widget->activate();
-    }
-    else
-    {
-        FlexWidget* flexWidget = FlexManager::instance()->createFlexWidget(Flex::ToolView, Flex::parent(Flex::ToolView), Flex::windowFlags());
-        DockWidget* dockWidget = FlexManager::instance()->createDockWidget(Flex::ToolView, flexWidget, Flex::widgetFlags(), "View-0");
-        dockWidget->setViewMode(Flex::ToolView);
-        dockWidget->setWindowTitle("View-0");
-        flexWidget->addDockWidget(dockWidget);
-        flexWidget->show();
-        flexWidget->move(geometry().center() - flexWidget->rect().center());
+        QString dockWidgetName = QString("FileTool-%1").arg(i);
+
+        if (FlexManager::instance()->hasDockWidget(dockWidgetName))
+        {
+            continue;
+        }
+
+        if (!FlexManager::instance()->restore(dockWidgetName))
+        {
+            DockWidget* dockWidget = FlexManager::instance()->createDockWidget(Flex::FileView, Flex::parent(Flex::FileView), Flex::windowFlags());
+            dockWidget->setViewMode(Flex::FileView);
+            dockWidget->setWindowTitle(dockWidgetName);
+            dockWidget->show();
+            dockWidget->move(geometry().center() - dockWidget->rect().center());
+        }
+
+        break;
     }
 }
 
-void QtGuider::on_action_View_1_triggered()
+void QtGuider::on_actionEdit_Redo_triggered()
 {
-    DockWidget* widget = nullptr;
+    static int i = 0;
+    for (;; i++)
+    {
+        QString dockWidgetName = QString("ViewTool-%1").arg(i);
 
-    if ((widget = FlexManager::instance()->dockWidget("View-1")) != nullptr)
-    {
-        widget->activate();
-    }
-    else
-    {
-        FlexWidget* flexWidget = FlexManager::instance()->createFlexWidget(Flex::ToolView, Flex::parent(Flex::ToolView), Flex::windowFlags());
-        DockWidget* dockWidget = FlexManager::instance()->createDockWidget(Flex::ToolView, flexWidget, Flex::widgetFlags(), "View-1");
-        dockWidget->setViewMode(Flex::ToolView);
-        dockWidget->setWindowTitle("View-1");
-        flexWidget->addDockWidget(dockWidget);
-        flexWidget->show();
-        flexWidget->move(geometry().center() - flexWidget->rect().center());
-    }
-}
+        if (FlexManager::instance()->hasDockWidget(dockWidgetName))
+        {
+            continue;
+        }
 
-void QtGuider::on_action_View_2_triggered()
-{
-    DockWidget* widget = nullptr;
+        if (!FlexManager::instance()->restore(dockWidgetName))
+        {
+            DockWidget* dockWidget = FlexManager::instance()->createDockWidget(Flex::ToolView, Flex::parent(Flex::ToolView), Flex::windowFlags());
+            dockWidget->setViewMode(Flex::ToolView);
+            dockWidget->setWindowTitle(dockWidgetName);
+            dockWidget->show();
+            dockWidget->move(geometry().center() - dockWidget->rect().center());
+        }
 
-    if ((widget = FlexManager::instance()->dockWidget("View-2")) != nullptr)
-    {
-        widget->activate();
-    }
-    else
-    {
-        FlexWidget* flexWidget = FlexManager::instance()->createFlexWidget(Flex::ToolView, Flex::parent(Flex::ToolView), Flex::windowFlags());
-        DockWidget* dockWidget = FlexManager::instance()->createDockWidget(Flex::ToolView, flexWidget, Flex::widgetFlags(), "View-2");
-        dockWidget->setViewMode(Flex::ToolView);
-        dockWidget->setWindowTitle("View-2");
-        flexWidget->addDockWidget(dockWidget);
-        flexWidget->show();
-        flexWidget->move(geometry().center() - flexWidget->rect().center());
+        break;
     }
 }
 

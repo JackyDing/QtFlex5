@@ -1,9 +1,11 @@
 #include "QtDockWidget.h"
 #include "QtDockSite.h"
+#include "QtDockSide.h"
 #include "QtFlexWidget.h"
 #include "QtFlexHelper.h"
 #include <QtCore/QJsonObject>
 #include <QtCore/QJsonArray>
+#include <QtCore/QJsonDocument>
 #include <QtGui/QMoveEvent>
 #include <QtGui/QPainter>
 #include <QtWidgets/QApplication>
@@ -40,6 +42,7 @@ public:
     Flex::Features _dockFeatures;
     Flex::Features _siteFeatures;
     QWidget* _widget;
+    QString _flexWidgetName;
     QVBoxLayout* _layout;
     FlexHelper* _helper;
     int _titleBarHeight;
@@ -163,6 +166,10 @@ bool DockWidget::event(QEvent* evt)
             impl->update(this);
         }
     }
+    else if (evt->type() == Flex::Update)
+    {
+        impl->_flexWidgetName = flexWidgetName();
+    }
     return QWidget::event(evt);
 }
 
@@ -232,6 +239,11 @@ void DockWidget::paintEvent(QPaintEvent*)
     }
 }
 
+void DockWidget::closeEvent(QCloseEvent*)
+{
+    
+}
+
 QSize DockWidget::sizeHint() const
 {
     return isFloating() ? QSize(640, 480) : QWidget::sizeHint();
@@ -284,6 +296,47 @@ DockSite* DockWidget::dockSite() const
         tempWidget = tempWidget->parentWidget();
     }
     return qobject_cast<DockSite*>(tempWidget);
+}
+
+DockSide* DockWidget::dockSide() const
+{
+    FlexWidget* flexWidget = this->flexWidget();
+
+    if (flexWidget == nullptr)
+    {
+        return nullptr;
+    }
+
+    DockSite* dockSite = this->dockSite();
+
+    if (dockSite == nullptr)
+    {
+        return nullptr;
+    }
+
+    return dockSite->dockSide();
+}
+
+FlexWidget* DockWidget::flexWidget() const
+{
+    QWidget* tempWidget = parentWidget();
+    while (tempWidget && !qobject_cast<FlexWidget*>(tempWidget))
+    {
+        tempWidget = tempWidget->parentWidget();
+    }
+    return qobject_cast<FlexWidget*>(tempWidget);
+}
+
+QString DockWidget::flexWidgetName() const
+{
+    if (impl->_flexWidgetName.isEmpty())
+    {
+        return [](FlexWidget* widget) { return widget ? widget->objectName() : ""; }(flexWidget());
+    }
+    else
+    {
+        return impl->_flexWidgetName;
+    }
 }
 
 QWidget* DockWidget::widget() const
@@ -361,6 +414,13 @@ void DockWidget::activate()
     {
         setFocus();
     }
+
+    DockSide* dockSide = this->dockSide();
+
+    if (dockSide)
+    {
+        dockSide->makeCurrent(dockSite);
+    }
 }
 
 bool DockWidget::isFloating() const
@@ -382,13 +442,27 @@ bool DockWidget::load(const QJsonObject& object)
     return true;
 }
 
-bool DockWidget::save(QJsonObject& object)
+bool DockWidget::save(QJsonObject& object) const
 {
     object["dockWidgetName"] = windowTitle();
     object["viewMode"] = (int)viewMode();
     object["dockFeatures"] = (int)dockFeatures();
     object["siteFeatures"] = (int)siteFeatures();
     return true;
+}
+
+QString DockWidget::identifier()
+{
+    DockSite* dockSite = this->dockSite();
+
+    if (dockSite == nullptr)
+    {
+        return objectName();
+    }
+    else
+    {
+        return QString("%1,%2,%3").arg(dockSite->identifier()).arg(dockSite->indexOf(this)).arg(objectName());
+    }
 }
 
 void DockWidget::on_titleBar_buttonClicked(Flex::Button button, bool*)

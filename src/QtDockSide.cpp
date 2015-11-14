@@ -268,7 +268,7 @@ void DockSide::leaveEvent(QEvent*)
     impl->_over = -1; update();
 }
 
-bool DockSide::hasDockSite(DockSite* dockSite)
+bool DockSide::hasDockSite(DockSite* dockSite) const
 {
     return impl->_dockSites.contains(dockSite);
 }
@@ -288,9 +288,42 @@ const QList<DockSite*>& DockSide::dockSites() const
     return impl->_dockSites;
 }
 
+DockSite* DockSide::dockSite(const QString& name) const
+{
+    auto iter = std::find_if(impl->_dockSites.begin(), impl->_dockSites.end(), [&](const DockSite* tempSite) { return tempSite->objectName() == name; });
+
+    if (iter != impl->_dockSites.end())
+    {
+        return *iter;
+    }
+
+    return nullptr;
+}
+
+int DockSide::indexOf(DockSite* dockSite) const
+{
+    return impl->_dockSites.indexOf(dockSite);
+}
+
 DockSite* DockSide::current() const
 {
     return impl->_curr != -1 ? impl->_dockSites[impl->_curr] : nullptr;
+}
+
+void DockSide::makeCurrent(DockSite* dockSite)
+{
+    if (!hasDockSite(dockSite))
+    {
+        return;
+    }
+
+    auto prev = impl->_curr != -1 ? impl->_dockSites[impl->_curr] : nullptr;
+
+    auto curr = dockSite;
+
+    impl->_curr = indexOf(dockSite);
+
+    emit currentChanged(this, prev, curr);
 }
 
 void DockSide::doneCurrent()
@@ -319,7 +352,7 @@ bool DockSide::load(const QJsonObject& object)
     return true;
 }
 
-bool DockSide::save(QJsonObject& object)
+bool DockSide::save(QJsonObject& object) const
 {
     object["space"] = impl->_space;
     object["headOffset"] = impl->_headOffset;

@@ -4,9 +4,11 @@
 #include "QtDockGuider.h"
 #include "QtDockSite.h"
 #include "QtDockSide.h"
+#include <QtCore/QUuid>
 #include <QtCore/QDebug>
 #include <QtCore/QJsonObject>
 #include <QtCore/QJsonArray>
+#include <QtCore/QJsonDocument>
 #include <QtGui/QMouseEvent>
 #include <QtGui/QWindow>
 #include <QtWidgets/QDesktopWidget>
@@ -73,7 +75,13 @@ public:
     bool load(FlexWidget* self, const QJsonArray& objects, QSplitter* splitter);
 
 public:
-    bool save(FlexWidget* self, QJsonArray& objects, QSplitter* splitter);
+    bool save(const FlexWidget* self, QJsonArray& objects, QSplitter* splitter) const;
+
+public:
+    QJsonObject find(const QJsonObject& object, const QStringList& path, int& index) const;
+
+public:
+    QString generate() const;
 
 public:
     int _titleBarHeight = 23;
@@ -104,7 +112,8 @@ bool FlexWidgetImpl::load(FlexWidget* self, const QJsonArray& objects, QSplitter
         if (object["type"] == "wrapper")
         {
             QSplitter* subSplitter = new QSplitter();
-            splitter->setProperty("Flex", true);
+            subSplitter->setProperty("Flex", true);
+            subSplitter->setObjectName(object["name"].toString());
             load(self, object["value"].toArray(), subSplitter);
             splitter->addWidget(subSplitter);
         }
@@ -129,7 +138,7 @@ bool FlexWidgetImpl::load(FlexWidget* self, const QJsonArray& objects, QSplitter
     return true;
 }
 
-bool FlexWidgetImpl::save(FlexWidget* self, QJsonArray& objects, QSplitter* splitter)
+bool FlexWidgetImpl::save(const FlexWidget* self, QJsonArray& objects, QSplitter* splitter) const
 {
     auto sizes = splitter->sizes();
 
@@ -142,6 +151,7 @@ bool FlexWidgetImpl::save(FlexWidget* self, QJsonArray& objects, QSplitter* spli
         if (qobject_cast<QSplitter*>(widget))
         {
             node["type"] = "wrapper";
+            node["name"] = widget->objectName();
             QJsonArray widgets;
             save(self, widgets, qobject_cast<QSplitter*>(widget));
             node["value"] = widgets;
@@ -162,6 +172,44 @@ bool FlexWidgetImpl::save(FlexWidget* self, QJsonArray& objects, QSplitter* spli
     }
 
     return true;
+}
+
+QJsonObject FlexWidgetImpl::find(const QJsonObject& object, const QStringList& path, int& index) const
+{
+    if (path.size() <= 1)
+    {
+        index = -1; return QJsonObject();
+    }
+    else
+    {
+        index = -1;
+        if (path[1] == "_flex_siteContainer")
+        {
+            QJsonArray objects = object["dockSites"].toArray();
+
+            for (int i = 2; i < path.length() - 1; i += 2)
+            {
+                int number = path[i].toInt();
+
+                QJsonObject target = objects[number].toObject();
+
+                if (!target.contains("type"))
+                {
+                    index = number; return target;
+                }
+
+                if (target["type"].toString() == "wrapper")
+                {
+                    objects = target["value"].toArray();
+                }
+                else
+                {
+                    objects = target["value"].toObject()["widgets"].toArray();
+                }
+            }
+        }
+        return QJsonObject();
+    }
 }
 
 void FlexWidgetImpl::updateDockSides(FlexWidget* self)
@@ -535,7 +583,7 @@ void FlexWidgetImpl::addDockSite(FlexWidget* self, DockSite* dockSite, Qt::Orien
         }
         splitter->setSizes(QList<int>() << newValue << newValue);
         qobject_cast<QGridLayout*>(self->layout())->addWidget(splitter, 1, 1, 1, 1);
-        _siteContainer->setObjectName("");
+        _siteContainer->setObjectName(generate());
         _siteContainer = splitter;
         _siteContainer->setObjectName("_flex_siteContainer");
     }
@@ -585,7 +633,8 @@ void FlexWidgetImpl::addDockSite(FlexWidget* /*self*/, DockSite* dockSite, int s
     {
         auto sizes = splitter->sizes();
         QSplitter* subSplitter = new QSplitter(orientation);
-        splitter->setProperty("Flex", true);
+        subSplitter->setProperty("Flex", true);
+        subSplitter->setObjectName(generate());
         if (direction == 0)
         {
             subSplitter->addWidget(dockSite);
@@ -683,7 +732,7 @@ void FlexWidgetImpl::addFlexWidget(FlexWidget* self, FlexWidget* widget, Qt::Ori
             }
             splitter->setSizes(QList<int>() << newValue << newValue);
             qobject_cast<QGridLayout*>(self->layout())->addWidget(splitter, 1, 1, 1, 1);
-            _siteContainer->setObjectName("");
+            _siteContainer->setObjectName(generate());
             _siteContainer = splitter;
             _siteContainer->setObjectName("_flex_siteContainer");
         }
@@ -773,7 +822,8 @@ void FlexWidgetImpl::addFlexWidget(FlexWidget* self, FlexWidget* widget, int sit
         {
             auto sizes = splitter->sizes();
             auto subSplitter = new QSplitter(orientation);
-            splitter->setProperty("Flex", true);
+            subSplitter->setProperty("Flex", true);
+            subSplitter->setObjectName(generate());
             if (direction == 0)
             {
                 subSplitter->addWidget(widgetContainer);
@@ -834,27 +884,35 @@ void FlexWidgetImpl::simplify(FlexWidget*, DockSite* dockSite)
         }
         else if (container->count() == 2)
         {
+#if 0
             QSplitter* parentSplitter = qobject_cast<QSplitter*>(container->parentWidget());
 
             int i = container->indexOf(dockSite);
-            int j = parentSplitter->indexOf(container);
 
-            container->setParent(nullptr);
+            QSplitter* remainSplitter = qobject_cast<QSplitter*>(container->widget(i == 0 ? 1 : 0));
 
-            if (i == 0)
+            if (remainSplitter != nullptr)
             {
-                parentSplitter->insertWidget(j, container->widget(1));
-            }
-            else
-            {
-                parentSplitter->insertWidget(j, container->widget(0));
-            }
+                int j = parentSplitter->indexOf(container);
 
-            container->deleteLater();
+                container->setParent(nullptr);
+
+                parentSplitter->insertWidget(j, remainSplitter);
+
+                remainSplitter->setObjectName(container->objectName());
+
+                container->deleteLater();
+            }
+#endif
         }
     }
 
     _adjusting = adjusting;
+}
+
+QString FlexWidgetImpl::generate() const
+{
+    return QUuid::createUuid().toString().toUpper();
 }
 
 FlexWidget::FlexWidget(Flex::ViewMode viewMode, QWidget* parent, Qt::WindowFlags flags) : QWidget(parent, flags), impl(new FlexWidgetImpl)
@@ -1189,7 +1247,7 @@ bool FlexWidget::load(const QJsonObject& object)
     return result;
 }
 
-bool FlexWidget::save(QJsonObject& object)
+bool FlexWidget::save(QJsonObject& object) const
 {
     QJsonArray dockSites;
     bool result = impl->save(this, dockSites, impl->_siteContainer);
@@ -1217,6 +1275,243 @@ bool FlexWidget::save(QJsonObject& object)
     }
 
     return result;
+}
+
+QByteArray FlexWidget::snapshot() const
+{
+    QJsonObject object;
+
+    object["viewMode"] = (int)viewMode();
+    object["windowFlags"] = (int)Flex::windowFlags(viewMode());
+    object["flexWidgetName"] = objectName();
+
+    save(object);
+
+#ifdef _DEBUG
+    return QJsonDocument(object).toJson(QJsonDocument::Indented);
+#else
+    return QJsonDocument(object).toJson(QJsonDocument::Compact);
+#endif
+}
+
+bool FlexWidget::restore(const QByteArray& snapshot, const QString& identifer)
+{
+    QStringList dockWidgetPath = identifer.split(",");
+
+    int dockWidgetIndex = -1;
+
+    int length = dockWidgetPath.size();
+
+    QJsonObject flexWidgetObject = QJsonDocument::fromJson(snapshot).object();
+
+    QJsonObject dockWidgetObject = impl->find(flexWidgetObject, dockWidgetPath, dockWidgetIndex);
+
+    DockSite* dockSite = nullptr;
+
+    QByteArray flexWidgetTemp = this->snapshot();
+
+    if ((dockSite = this->dockSite(dockWidgetPath[length - 3])) != nullptr)
+    {
+        if (!dockWidgetObject.isEmpty())
+        {
+            Flex::ViewMode viewMode = (Flex::ViewMode)dockWidgetObject["viewMode"].toInt();
+
+            QString dockWidgetName = dockWidgetObject["dockWidgetName"].toString();
+
+            DockWidget* dockWidget = FlexManager::instance()->createDockWidget(viewMode, dockSite, Flex::widgetFlags(), dockWidgetName);
+
+            dockWidget->load(dockWidgetObject);
+
+            dockSite->insertWidget(dockWidget, dockWidgetIndex);
+
+            dockWidget->activate();
+
+            return true;
+        }
+        else
+        {
+            return false;
+        }
+    }
+    else
+    {
+        if (length <= 1)
+        {
+            return false;
+        }
+        else
+        {
+            if (dockWidgetPath[1] == "_flex_siteContainer")
+            {
+                QSplitter* parSplitter = impl->_siteContainer;
+
+                QJsonArray objects = flexWidgetObject["dockSites"].toArray();
+
+                auto adjusting = impl->_adjusting;
+
+                impl->_adjusting = true;
+
+                for (int i = 2; i < dockWidgetPath.length() - 3; i += 2)
+                {
+                    int number = dockWidgetPath[i].toInt();
+
+                    QJsonObject target = objects[number].toObject();
+
+                    if (target["type"].toString() == "wrapper")
+                    {
+                        QSplitter* subSplitter = nullptr;
+
+                        QString subSplitterName = target["name"].toString();
+
+                        if ((subSplitter = parSplitter->findChild<QSplitter*>(subSplitterName)) == nullptr)
+                        {
+                            subSplitter = new QSplitter();
+                            subSplitter->setProperty("Flex", true);
+                            subSplitter->setObjectName(subSplitterName);
+                            parSplitter->insertWidget(number, subSplitter);
+                        }
+
+                        QList<int> sizes;
+
+                        for (int j = 0; j < objects.count(); ++j)
+                        {
+                            sizes << objects[j].toObject()["size"].toInt();
+                        }
+
+                        parSplitter->setSizes(sizes);
+
+                        parSplitter = subSplitter;
+
+                        objects = target["value"].toArray();
+                    }
+                    else
+                    {
+                        QJsonObject median = target["value"].toObject();
+
+                        QList<int> sizes;
+
+                        for (int j = 0; j < objects.count(); ++j)
+                        {
+                            QJsonObject source = objects[j].toObject();
+
+                            if (parSplitter)
+                            {
+                                parSplitter->setOrientation((Qt::Orientation)source["orientation"].toInt());
+                            }
+
+                            sizes << source["size"].toInt();
+                        }
+
+                        int dockWidgetIndex = dockWidgetPath[i + 2].toInt();
+
+                        objects = median["widgets"].toArray();
+
+                        median["widgets"] = QJsonArray() << objects[dockWidgetIndex];
+
+                        DockSite* tempSite = new DockSite();
+
+                        tempSite->load(median);
+
+                        impl->_sites.append(tempSite);
+
+                        parSplitter->insertWidget(number, tempSite);
+
+                        parSplitter->setSizes(sizes);
+
+                        tempSite->widget(0)->activate();
+                    }
+                }
+
+                impl->_adjusting = adjusting;
+
+                impl->updateViewMode(this, viewMode(), impl->_sites.size() == 1);
+
+                impl->update(this);
+
+                return true;
+            }
+            if (dockWidgetPath[1] == "_flex_sideContainer")
+            {
+                QSplitter* parSplitter = impl->_siteContainer;
+
+                QJsonArray objects = flexWidgetObject["dockSides"].toArray();
+
+                QString dockSiteName = dockWidgetPath[length - 3];
+
+                QJsonObject median;
+
+                QJsonArray lDockSites = objects[Flex::L].toObject()["dockSites"].toArray();
+                QJsonArray tDockSites = objects[Flex::T].toObject()["dockSites"].toArray();
+                QJsonArray rDockSites = objects[Flex::R].toObject()["dockSites"].toArray();
+                QJsonArray bDockSites = objects[Flex::B].toObject()["dockSites"].toArray();
+
+                Flex::Direction direction = Flex::C;
+
+                if (median.isEmpty())
+                {
+                    for (int i = 0; i < lDockSites.size(); ++i)
+                    {
+                        if (lDockSites[i].toObject()["name"].toString() == dockSiteName)
+                        {
+                            direction = Flex::L; median = lDockSites[i].toObject(); break;
+                        }
+                    }
+                }
+                if (median.isEmpty())
+                {
+                    for (int i = 0; i < tDockSites.size(); ++i)
+                    {
+                        if (tDockSites[i].toObject()["name"].toString() == dockSiteName)
+                        {
+                            direction = Flex::T; median = tDockSites[i].toObject(); break;
+                        }
+                    }
+                }
+                if (median.isEmpty())
+                {
+                    for (int i = 0; i < rDockSites.size(); ++i)
+                    {
+                        if (rDockSites[i].toObject()["name"].toString() == dockSiteName)
+                        {
+                            direction = Flex::R; median = rDockSites[i].toObject(); break;
+                        }
+                    }
+                }
+                if (median.isEmpty())
+                {
+                    for (int i = 0; i < bDockSites.size(); ++i)
+                    {
+                        if (bDockSites[i].toObject()["name"].toString() == dockSiteName)
+                        {
+                            direction = Flex::B; median = bDockSites[i].toObject(); break;
+                        }
+                    }
+                }
+
+                if (direction == Flex::C)
+                {
+                    return false;
+                }
+
+                DockSite* tempSite = new DockSite(NULL, QSize(), impl->_sideContainer);
+
+                tempSite->load(median);
+
+                auto reserving = impl->_reserving;
+                impl->_reserving = true;
+                impl->_sides[direction]->attachDockSite(tempSite);
+                impl->_reserving = reserving;
+
+                impl->updateDockSides(this);
+
+                impl->_sides[direction]->makeCurrent(tempSite);
+
+                return true;
+            }
+        }
+    }
+
+    return true;
 }
 
 void FlexWidget::showGuider(QWidget* widget)
@@ -1513,7 +1808,7 @@ bool FlexWidget::addFlexWidget(FlexWidget* widget, Flex::DockArea area, int site
     {
         QSplitter* widgetContainer = widget->siteContainer();
 
-        widgetContainer->setObjectName("");
+        widgetContainer->setObjectName(impl->generate());
 
         for (auto dockSite : widget->dockSites(Flex::C))
         {
@@ -1815,6 +2110,40 @@ const QList<DockSite*>& FlexWidget::dockSites(Flex::Direction direction) const
     }
 }
 
+DockSite* FlexWidget::dockSite(const QString& name) const
+{
+    auto iter = std::find_if(impl->_sites.begin(), impl->_sites.end(), [&](const DockSite* tempSite) { return tempSite->objectName() == name; });
+
+    if (iter != impl->_sites.end())
+    {
+        return *iter;
+    }
+
+    DockSite* tempSite = nullptr;
+
+    if ((tempSite = impl->_sides[Flex::L]->dockSite(name)) != nullptr)
+    {
+        return tempSite;
+    }
+
+    if ((tempSite = impl->_sides[Flex::T]->dockSite(name)) != nullptr)
+    {
+        return tempSite;
+    }
+
+    if ((tempSite = impl->_sides[Flex::R]->dockSite(name)) != nullptr)
+    {
+        return tempSite;
+    }
+
+    if ((tempSite = impl->_sides[Flex::B]->dockSite(name)) != nullptr)
+    {
+        return tempSite;
+    }
+
+    return nullptr;
+}
+
 QSplitter* FlexWidget::siteContainer() const
 {
     return impl->_siteContainer;
@@ -1837,6 +2166,11 @@ bool FlexWidget::isFloating() const
 
 void FlexWidget::on_titleBar_buttonClicked(Flex::Button button, bool* accepted)
 {
+    if (button == Flex::Close)
+    {
+        FlexManager::instance()->snapshot(this);
+    }
+
     if (button != Flex::Close || (impl->_viewMode != Flex::ToolPagesView))
     {
         return;

@@ -18,15 +18,19 @@ public:
 protected:
     void closeEvent(QCloseEvent* evt);
 
+public:
+    void openFile_N(int n);
+    void openView_N(int n);
+
 private slots:
-    void on_action_Undo_triggered();
-    void on_action_Redo_triggered();
-    void on_action_Open_triggered();
-    void on_action_Exit_triggered();
-    void on_action_View_N_triggered();
-    void on_action_View_0_triggered();
-    void on_action_View_1_triggered();
-    void on_action_View_2_triggered();
+    void on_actionEdit_Undo_triggered();
+    void on_actionEdit_Redo_triggered();
+    void on_actionFile_N_triggered();
+    void on_actionView_N_triggered();
+
+private slots:
+    void actionView_X_triggered();
+    void actionFile_X_triggered();
 
 private:
     friend class QtGuiderImpl;

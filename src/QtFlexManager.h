@@ -78,6 +78,13 @@ public:
         Close
     };
 
+    enum Widget
+    {
+        NoneWidget = 0,
+        DockWidget,
+        FlexWidget
+    };
+
     enum Feature
     {
         AllowDockAsNorthTabPage = 0x1,
@@ -201,6 +208,13 @@ public:
     DockWidget* dockWidgetAt(int index) const;
 
 public:
+    bool snapshot(DockWidget* dockWidget);
+    bool snapshot(FlexWidget* flexWidget);
+
+public:
+    bool restore(const QString& name);
+
+public:
     static FlexManager* instance();
 
 public:
@@ -213,13 +227,15 @@ public:
     bool load(const QByteArray& content, const QMap<QString, QWidget*>& parents);
 
 public:
-    QByteArray save();
+    QByteArray save() const;
 
 private:
     bool eventFilter(QObject*, QEvent*);
 
 private Q_SLOTS:
     void on_app_focusChanged(QWidget* old, QWidget* now);
+    void on_dockWidget_destroying(DockWidget* widget);
+    void on_flexWidget_destroying(FlexWidget* widget);
     void on_dockWidget_destroyed(QObject* widget);
     void on_flexWidget_destroyed(QObject* widget);
     void on_flexWidget_guiderShow(FlexWidget*, QWidget*);

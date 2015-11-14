@@ -4,6 +4,8 @@
 #include "QtDockSite.h"
 #include <QtCore/QAbstractNativeEventFilter>
 #include <QtCore/QVariant>
+#include <QtCore/QDebug>
+#include <QtCore/QUuid>
 #include <QtCore/QJsonObject>
 #include <QtCore/QJsonArray>
 #include <QtCore/QJsonDocument>
@@ -44,6 +46,14 @@ DockSite* getDockSite(QWidget* widget)
     return nullptr;
 }
 
+namespace
+{
+    typedef std::tuple<QByteArray, int> SnapshotNode;
+    typedef QMap<int, SnapshotNode> SnapshotList;
+    typedef std::tuple<QString, QString, int> SnapshotItem;
+    typedef QMap<QString, SnapshotItem> SnapshotDict;
+}
+
 class FlexManagerImpl : public QAbstractNativeEventFilter
 {
 public:
@@ -55,15 +65,73 @@ public:
     bool nativeEventFilter(const QByteArray &eventType, void *message, long *result);
 
 public:
+    QString flexWidgetName(DockWidget* dockWidget) const;
+    QString flexWidgetName(FlexWidget* flexWidget) const;
+
+public:
+    int generate() const;
+
+public:
+    bool equalIdentifer(const QString& id1, const QString& id2) const;
+
+public:
+    QString _flexWidgetDestorying;
+    QString _dockWidgetDestorying;
     QList<FlexWidget*> _flexWidgets;
     QList<DockWidget*> _dockWidgets;
-    bool _ready;
     QList<QIcon> _buttonIcons;
+    SnapshotList _snapshotList;
+    SnapshotDict _snapshotDict;
+    bool _ready;
 };
 
 bool FlexManagerImpl::nativeEventFilter(const QByteArray &eventType, void *message, long *result)
 {
     return false;
+}
+
+QString FlexManagerImpl::flexWidgetName(DockWidget* dockWidget) const
+{
+    if (_flexWidgetDestorying.isEmpty())
+    {
+        return dockWidget->flexWidgetName();
+    }
+    else
+    {
+        return _flexWidgetDestorying;
+    }
+}
+
+QString FlexManagerImpl::flexWidgetName(FlexWidget* flexWidget) const
+{
+    return flexWidget->objectName();
+}
+
+int FlexManagerImpl::generate() const
+{
+    static int i = 0; return i++;
+}
+
+bool FlexManagerImpl::equalIdentifer(const QString& id1, const QString& id2) const
+{
+    QStringList parts1 = id1.split(",");
+    QStringList parts2 = id2.split(",");
+    if (parts1.size() != parts2.size())
+    {
+        return false;
+    }
+    if (parts1[0] != parts2[0])
+    {
+        return false;
+    }
+    for (int i = 1; i < parts1.size() - 1; i += 2)
+    {
+        if (parts1[i] != parts2[i])
+        {
+            return false;
+        }
+    }
+    return true;
 }
 
 FlexManager::FlexManager() : impl(new FlexManagerImpl)
@@ -109,13 +177,20 @@ FlexManager* FlexManager::instance()
 
 FlexWidget* FlexManager::createFlexWidget(Flex::ViewMode viewMode, QWidget* parent, Qt::WindowFlags flags, const QString& flexWidgetName)
 {
+#ifdef _DEBUG
+    if (!flexWidgetName.isEmpty() && hasFlexWidget(flexWidgetName))
+    {
+        qWarning() << tr("FlexManager::createFlexWidget: FlexWidget [%1] alreay exists!").arg(flexWidgetName);
+    }
+#endif
     FlexWidget* widget = new FlexWidget(viewMode, parent, flags);
-    widget->setObjectName(flexWidgetName);
+    widget->setObjectName(flexWidgetName.isEmpty() ? QUuid::createUuid().toString().toUpper() : flexWidgetName);
+    widget->setWindowTitle(flexWidgetName);
     connect(widget, SIGNAL(destroyed(QObject*)), SLOT(on_flexWidget_destroyed(QObject*)));
     connect(widget, SIGNAL(enterMove(QObject*)), SLOT(on_flexWidget_enterMove(QObject*)));
     connect(widget, SIGNAL(leaveMove(QObject*)), SLOT(on_flexWidget_leaveMove(QObject*)));
     connect(widget, SIGNAL(moving(QObject*)), SLOT(on_flexWidget_moving(QObject*)));
-    connect(widget, SIGNAL(destroying(FlexWidget*)), SIGNAL(flexWidgetDestroying(FlexWidget*)));
+    connect(widget, SIGNAL(destroying(FlexWidget*)), SLOT(on_flexWidget_destroying(FlexWidget*)));
     widget->installEventFilter(this);
     impl->_flexWidgets.append(widget);
     emit flexWidgetCreated(widget);
@@ -124,13 +199,20 @@ FlexWidget* FlexManager::createFlexWidget(Flex::ViewMode viewMode, QWidget* pare
 
 DockWidget* FlexManager::createDockWidget(Flex::ViewMode viewMode, QWidget* parent, Qt::WindowFlags flags, const QString& dockWidgetName)
 {
+#ifdef _DEBUG
+    if (!dockWidgetName.isEmpty() && hasDockWidget(dockWidgetName))
+    {
+        qWarning() << tr("FlexManager::createDockWidget: DockWidget <%1> alreay exists!").arg(dockWidgetName);
+    }
+#endif
     DockWidget* widget = new DockWidget(viewMode, parent, flags);
-    widget->setObjectName(dockWidgetName);
+    widget->setObjectName(dockWidgetName.isEmpty() ? QUuid::createUuid().toString().toUpper() : dockWidgetName);
+    widget->setWindowTitle(dockWidgetName);
     connect(widget, SIGNAL(destroyed(QObject*)), SLOT(on_dockWidget_destroyed(QObject*)));
     connect(widget, SIGNAL(enterMove(QObject*)), SLOT(on_dockWidget_enterMove(QObject*)));
     connect(widget, SIGNAL(leaveMove(QObject*)), SLOT(on_dockWidget_leaveMove(QObject*)));
     connect(widget, SIGNAL(moving(QObject*)), SLOT(on_dockWidget_moving(QObject*)));
-    connect(widget, SIGNAL(destroying(DockWidget*)), SIGNAL(dockWidgetDestroying(DockWidget*)));
+    connect(widget, SIGNAL(destroying(DockWidget*)), SLOT(on_dockWidget_destroying(DockWidget*)));
     widget->installEventFilter(this);
     impl->_dockWidgets.append(widget);
     emit dockWidgetCreated(widget);
@@ -210,26 +292,26 @@ bool FlexManager::load(const QByteArray& content, const QMap<QString, QWidget*>&
 
     QJsonObject object = QJsonDocument::fromJson(content).object();
 
-    QJsonArray flexWidgetObjects = object["flexWidgets"].toArray();
+QJsonArray flexWidgetObjects = object["flexWidgets"].toArray();
 
-    for (int i = 0; i < flexWidgetObjects.size(); ++i)
-    {
-        QJsonObject flexWidgetObject = flexWidgetObjects[i].toObject();
+for (int i = 0; i < flexWidgetObjects.size(); ++i)
+{
+    QJsonObject flexWidgetObject = flexWidgetObjects[i].toObject();
 
-        Flex::ViewMode viewMode = (Flex::ViewMode)flexWidgetObject["viewMode"].toInt();
-        QWidget* parent = parents.value(flexWidgetObject["parent"].toString(), nullptr);
-        Qt::WindowFlags flags = (Qt::WindowFlags)flexWidgetObject["windowFlags"].toInt();
-        QString flexWidgetName = flexWidgetObject["flexWidgetName"].toString();
+    Flex::ViewMode viewMode = (Flex::ViewMode)flexWidgetObject["viewMode"].toInt();
+    QWidget* parent = parents.value(flexWidgetObject["parent"].toString(), nullptr);
+    Qt::WindowFlags flags = (Qt::WindowFlags)flexWidgetObject["windowFlags"].toInt();
+    QString flexWidgetName = flexWidgetObject["flexWidgetName"].toString();
 
-        FlexWidget* flexWidget = createFlexWidget(viewMode, parent, Flex::widgetFlags(), flexWidgetName);
+    FlexWidget* flexWidget = createFlexWidget(viewMode, parent, Flex::widgetFlags(), flexWidgetName);
 
-        flexWidget->load(flexWidgetObject);
-    }
-
-    return true;
+    flexWidget->load(flexWidgetObject);
 }
 
-QByteArray FlexManager::save()
+return true;
+}
+
+QByteArray FlexManager::save() const
 {
     QJsonObject object;
 
@@ -253,13 +335,200 @@ QByteArray FlexManager::save()
 
     object["flexWidgets"] = flexWidgetObjects;
 
-    return QJsonDocument(object).toJson();
+#ifdef _DEBUG
+    return QJsonDocument(object).toJson(QJsonDocument::Indented);
+#else
+    return QJsonDocument(object).toJson(QJsonDocument::Compact);
+#endif
+}
+
+bool FlexManager::snapshot(DockWidget* dockWidget)
+{
+    if (!hasDockWidget(dockWidget->objectName()))
+    {
+        return false;
+    }
+
+    FlexWidget* flexWidget = dockWidget->flexWidget();
+
+    if (!flexWidget)
+    {
+        return false;
+    }
+
+    QString dockWidgetPath = dockWidget->identifier();
+
+    SnapshotDict::iterator item;
+
+    if ((item = impl->_snapshotDict.find(dockWidget->objectName())) != impl->_snapshotDict.end())
+    {
+        if (impl->equalIdentifer(dockWidgetPath, std::get<1>(item.value())))
+        {
+            return true;
+        }
+    }
+
+    if (item != impl->_snapshotDict.end())
+    {
+        if ((--std::get<1>(impl->_snapshotList[std::get<2>(item.value())])) == 0)
+        {
+            impl->_snapshotList.remove(std::get<2>(item.value()));
+        }
+    }
+
+    int key = impl->generate();
+
+    auto dockWidgets = flexWidget->findChildren<DockWidget*>();
+
+    int count = 1;
+
+    impl->_snapshotDict[dockWidget->objectName()] = std::make_tuple(flexWidget->objectName(), dockWidgetPath, key);
+
+    foreach (auto tempWidget, dockWidgets)
+    {
+        if (tempWidget == dockWidget)
+        {
+            continue;
+        }
+
+        dockWidgetPath = tempWidget->identifier();
+
+        if ((item = impl->_snapshotDict.find(tempWidget->objectName())) != impl->_snapshotDict.end())
+        {
+            if (impl->equalIdentifer(dockWidgetPath, std::get<1>(item.value())))
+            {
+                continue;
+            }
+        }
+
+        if (item != impl->_snapshotDict.end())
+        {
+            if ((--std::get<1>(impl->_snapshotList[std::get<2>(item.value())])) == 0)
+            {
+                impl->_snapshotList.remove(std::get<2>(item.value()));
+            }
+        }
+
+        impl->_snapshotDict[tempWidget->objectName()] = std::make_tuple(flexWidget->objectName(), dockWidgetPath, key);
+
+        count++;
+    }
+
+    impl->_snapshotList[key] = std::make_tuple(flexWidget->snapshot(), count);
+
+    return true;
+}
+
+bool FlexManager::snapshot(FlexWidget* flexWidget)
+{
+    if (!hasFlexWidget(flexWidget->objectName()))
+    {
+        return false;
+    }
+
+    int key = impl->generate();
+
+    auto dockWidgets = flexWidget->findChildren<DockWidget*>();
+
+    int count = 0;
+
+    SnapshotDict::iterator item;
+
+    foreach(auto tempWidget, dockWidgets)
+    {
+        QString dockWidgetPath = tempWidget->identifier();
+
+        if ((item = impl->_snapshotDict.find(tempWidget->objectName())) != impl->_snapshotDict.end())
+        {
+            if (impl->equalIdentifer(dockWidgetPath, std::get<1>(item.value())))
+            {
+                continue;
+            }
+        }
+
+        if (item != impl->_snapshotDict.end())
+        {
+            if ((--std::get<1>(impl->_snapshotList[std::get<2>(item.value())])) == 0)
+            {
+                impl->_snapshotList.remove(std::get<2>(item.value()));
+            }
+        }
+
+        impl->_snapshotDict[tempWidget->objectName()] = std::make_tuple(flexWidget->objectName(), dockWidgetPath, key);
+
+        count++;
+    }
+
+    impl->_snapshotList[key] = std::make_tuple(flexWidget->snapshot(), count);
+
+    return true;
+}
+
+bool FlexManager::restore(const QString& name)
+{
+    SnapshotDict::iterator item;
+
+    if ((item = impl->_snapshotDict.find(name)) == impl->_snapshotDict.end())
+    {
+        return false;
+    }
+
+    QString flexWidgetName = std::get<0>(item.value());
+    QString dockWidgetPath = std::get<1>(item.value());
+
+    int key = std::get<2>(item.value());
+
+    SnapshotNode& node = impl->_snapshotList[key];
+
+    QByteArray& content = std::get<0>(node);
+
+    int& count = std::get<1>(node);
+
+    FlexWidget* flexWidget = nullptr;
+
+    if ((flexWidget = this->flexWidget(flexWidgetName)) == nullptr)
+    {
+        QJsonObject flexWidgetObject = QJsonDocument::fromJson(content).object();
+
+        Flex::ViewMode viewMode = (Flex::ViewMode)flexWidgetObject["viewMode"].toInt();
+
+        Qt::WindowFlags flags = (Qt::WindowFlags)flexWidgetObject["windowFlags"].toInt();
+
+        flexWidget = createFlexWidget(viewMode, nullptr, flags, flexWidgetName);
+
+        flexWidget->restoreGeometry(QByteArray::fromBase64(flexWidgetObject["geometry"].toString().toLatin1()));
+    }
+
+    bool result =  flexWidget->restore(content, dockWidgetPath);
+
+    impl->_snapshotDict.remove(name);
+
+    if (--count == 0)
+    {
+        impl->_snapshotList.remove(key);
+    }
+
+    return result;
 }
 
 bool FlexManager::eventFilter(QObject* obj, QEvent* evt)
 {
+    if (evt->type() == QEvent::Destroy)
+    {
+        switch (obj->property("class").value<int>())
+        {
+        case Flex::DockWidget:
+            impl->_dockWidgets.removeOne(static_cast<DockWidget*>(obj));
+            impl->_dockWidgetDestorying = "";
+            break;
+        case Flex::FlexWidget:
+            impl->_flexWidgets.removeOne(static_cast<FlexWidget*>(obj));
+            impl->_flexWidgetDestorying = "";
+            break;
+        }
+    }
 #ifndef Q_OS_WIN
-    if (evt->type() == QEvent::WindowActivate)
+    else if (evt->type() == QEvent::WindowActivate)
     {
         FlexWidget* flexWidget;
         if ((flexWidget = qobject_cast<FlexWidget*>(obj)) != nullptr)
@@ -284,14 +553,26 @@ bool FlexManager::eventFilter(QObject* obj, QEvent* evt)
     return false;
 }
 
+void FlexManager::on_dockWidget_destroying(DockWidget* widget)
+{
+    impl->_dockWidgetDestorying = widget->objectName();
+    emit dockWidgetDestroying(widget);
+}
+
+void FlexManager::on_flexWidget_destroying(FlexWidget* widget)
+{
+    impl->_flexWidgetDestorying = widget->objectName();
+    emit flexWidgetDestroying(widget);
+}
+
 void FlexManager::on_dockWidget_destroyed(QObject* widget)
 {
-    impl->_dockWidgets.removeOne(static_cast<DockWidget*>(widget));
+    widget->setProperty("class", QVariant::fromValue<int>(Flex::DockWidget));
 }
 
 void FlexManager::on_flexWidget_destroyed(QObject* widget)
 {
-    impl->_flexWidgets.removeOne(static_cast<FlexWidget*>(widget));
+    widget->setProperty("class", QVariant::fromValue<int>(Flex::FlexWidget));
 }
 
 void FlexManager::on_flexWidget_guiderShow(FlexWidget* flexWidget, QWidget* widget)

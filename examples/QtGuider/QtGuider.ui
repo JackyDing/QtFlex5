@@ -22,41 +22,45 @@
      <height>23</height>
     </rect>
    </property>
-   <widget class="QMenu" name="menu_File">
+   <widget class="QMenu" name="menuFile">
     <property name="title">
      <string>&amp;File</string>
     </property>
-    <addaction name="action_Open"/>
-    <addaction name="action_Save"/>
+    <addaction name="actionFile_N"/>
     <addaction name="separator"/>
-    <addaction name="action_Exit"/>
    </widget>
-   <widget class="QMenu" name="menu_Edit">
+   <widget class="QMenu" name="menuEdit">
     <property name="title">
      <string>&amp;Edit</string>
     </property>
-    <addaction name="action_Undo"/>
-    <addaction name="action_Redo"/>
+    <addaction name="actionEdit_Undo"/>
+    <addaction name="actionEdit_Redo"/>
    </widget>
-   <widget class="QMenu" name="menu_Help">
+   <widget class="QMenu" name="menuHelp">
     <property name="title">
      <string>&amp;Help</string>
     </property>
-    <addaction name="action_About"/>
+    <addaction name="actionHelp_About"/>
    </widget>
-   <widget class="QMenu" name="menu_View">
+   <widget class="QMenu" name="menuView">
     <property name="title">
      <string>&amp;View</string>
     </property>
-    <addaction name="action_View_N"/>
-    <addaction name="action_View_0"/>
-    <addaction name="action_View_1"/>
-    <addaction name="action_View_2"/>
+    <addaction name="actionView_N"/>
+    <addaction name="separator"/>
    </widget>
-   <addaction name="menu_File"/>
-   <addaction name="menu_Edit"/>
-   <addaction name="menu_View"/>
-   <addaction name="menu_Help"/>
+   <widget class="QMenu" name="menuTool">
+    <property name="title">
+     <string>Tool</string>
+    </property>
+    <addaction name="actionTool_N"/>
+    <addaction name="separator"/>
+   </widget>
+   <addaction name="menuFile"/>
+   <addaction name="menuEdit"/>
+   <addaction name="menuView"/>
+   <addaction name="menuTool"/>
+   <addaction name="menuHelp"/>
   </widget>
   <action name="action_Open">
    <property name="text">
@@ -76,7 +80,7 @@
     <string>-</string>
    </property>
   </action>
-  <action name="action_Exit">
+  <action name="actionFile_Exit">
    <property name="text">
     <string>&amp;Exit</string>
    </property>
@@ -84,7 +88,7 @@
     <string>Ctrl+Q</string>
    </property>
   </action>
-  <action name="action_Undo">
+  <action name="actionEdit_Undo">
    <property name="text">
     <string>&amp;Undo</string>
    </property>
@@ -92,7 +96,7 @@
     <string>Ctrl+Z</string>
    </property>
   </action>
-  <action name="action_Redo">
+  <action name="actionEdit_Redo">
    <property name="text">
     <string>&amp;Redo</string>
    </property>
@@ -100,7 +104,7 @@
     <string>Ctrl+R</string>
    </property>
   </action>
-  <action name="action_About">
+  <action name="actionHelp_About">
    <property name="text">
     <string>&amp;About</string>
    </property>
@@ -108,7 +112,7 @@
     <string>Ctrl+A</string>
    </property>
   </action>
-  <action name="action_View_N">
+  <action name="actionView_N">
    <property name="text">
     <string>View_N</string>
    </property>
@@ -129,6 +133,31 @@
   <action name="action_View_2">
    <property name="text">
     <string>View-2</string>
+   </property>
+  </action>
+  <action name="action_View_3">
+   <property name="text">
+    <string>View-3</string>
+   </property>
+  </action>
+  <action name="action_View_4">
+   <property name="text">
+    <string>View-4</string>
+   </property>
+  </action>
+  <action name="action_View_5">
+   <property name="text">
+    <string>View-5</string>
+   </property>
+  </action>
+  <action name="actionTool_N">
+   <property name="text">
+    <string>Tool-N</string>
+   </property>
+  </action>
+  <action name="actionFile_N">
+   <property name="text">
+    <string>File-N</string>
    </property>
   </action>
  </widget>

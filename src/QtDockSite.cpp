@@ -1,8 +1,10 @@
 #include "QtDockSite.h"
+#include "QtDockSide.h"
 #include "QtDockWidget.h"
 #include "QtFlexWidget.h"
 #include "QtFlexHelper.h"
 #include "QtFlexManager.h"
+#include <QtCore/QUuid>
 #include <QtCore/QJsonObject>
 #include <QtCore/QJsonArray>
 #include <QtGui/QResizeEvent>
@@ -165,7 +167,16 @@ void DockSiteImpl::update(DockSite* self, Flex::DockMode dockMode)
         tempWidget->update();
     }
 
-    qApp->sendEvent(self, new QResizeEvent(self->size(), QSize()));
+    QEvent update((QEvent::Type)Flex::Update);
+
+    for (int i = 0; i < _tabMdi->count(); ++i)
+    {
+        qApp->sendEvent(_tabMdi->widget(i), &update);
+    }
+
+    QResizeEvent resize(self->size(), QSize());
+
+    qApp->sendEvent(self, &resize);
 }
 
 void DockSiteImpl::adjust(DockSite* self, DockWidget* widget)
@@ -201,7 +212,8 @@ void DockSiteImpl::adjust(DockSite* self, DockWidget* widget)
         }
         _tabBar->setTabsClosable(true);
         _tabBar->setShape(QTabBar::RoundedNorth);
-        _tabBar->setFixedHeight(22);
+        //_tabBar->setFixedHeight(22);
+        //if (widget) _tabBar->show();
         _tabBar->show();
     }
     else
@@ -228,7 +240,8 @@ void DockSiteImpl::adjust(DockSite* self, DockWidget* widget)
         }
         _tabBar->setTabsClosable(false);
         _tabBar->setShape(QTabBar::RoundedSouth);
-        _tabBar->setFixedHeight(21);
+        //_tabBar->setFixedHeight(21);
+        //if (widget) _tabBar->hide();
         _tabBar->hide();
     }
 
@@ -317,6 +330,7 @@ bool DockSiteImpl::isTitleBarVisible(DockSite* self, QRect* rect) const
 
 DockSite::DockSite(DockWidget* widget, QSize baseSize, QWidget* parent) : QWidget(parent), impl(new DockSiteImpl)
 {
+    setObjectName(QUuid::createUuid().toString().toUpper());
     setAttribute(Qt::WA_DeleteOnClose);
     setFocusPolicy(Qt::StrongFocus);
     setProperty("Flex", true);
@@ -340,9 +354,10 @@ DockSite::DockSite(DockWidget* widget, QSize baseSize, QWidget* parent) : QWidge
     impl->_tabBar->setObjectName("_flex_tabBar");
     impl->_tabMdi = new DockSiteTabMdi(this);
     impl->_tabMdi->setObjectName("_flex_tabMdi");
-
     impl->_tabBarLayout->addWidget(impl->_tabBar);
     impl->_tabMdiLayout->addWidget(impl->_tabMdi);
+
+    impl->_tabBar->hide();
 
     arranger->setSpacing(0);
 
@@ -413,12 +428,17 @@ Flex::Features DockSite::features() const
 
 bool DockSite::addWidget(DockWidget* widget)
 {
+    return insertWidget(widget, -1);
+}
+
+bool DockSite::insertWidget(DockWidget* widget, int index)
+{
     Q_ASSERT(widget != nullptr);
-    
-    if (impl->_tabBar->addTab(widget->windowTitle()) >= 0)
+
+    if (impl->_tabBar->insertTab(index, widget->windowTitle()) >= 0)
     {
         impl->_tabMdi->blockSignals(true);
-        impl->_tabMdi->addWidget(widget);
+        impl->_tabMdi->insertWidget(index, widget);
         impl->_tabMdi->blockSignals(false);
     }
 
@@ -436,6 +456,45 @@ bool DockSite::addWidget(DockWidget* widget)
     impl->update(this, impl->_dockMode);
 
     return true;
+}
+
+DockSide* DockSite::dockSide() const
+{
+    FlexWidget* flexWidget = this->flexWidget();
+
+    if (flexWidget == nullptr)
+    {
+        return nullptr;
+    }
+
+    QWidget* container = parentWidget();
+
+    if (container != flexWidget->sideContainer())
+    {
+        return nullptr;
+    }
+
+    if (flexWidget->dockSide(Flex::L)->hasDockSite(const_cast<DockSite*>(this)))
+    {
+        return flexWidget->dockSide(Flex::L);
+    }
+
+    if (flexWidget->dockSide(Flex::T)->hasDockSite(const_cast<DockSite*>(this)))
+    {
+        return flexWidget->dockSide(Flex::T);
+    }
+
+    if (flexWidget->dockSide(Flex::B)->hasDockSite(const_cast<DockSite*>(this)))
+    {
+        return flexWidget->dockSide(Flex::B);
+    }
+
+    if (flexWidget->dockSide(Flex::R)->hasDockSite(const_cast<DockSite*>(this)))
+    {
+        return flexWidget->dockSide(Flex::R);
+    }
+
+    return nullptr;
 }
 
 FlexWidget* DockSite::flexWidget() const
@@ -510,6 +569,38 @@ void DockSite::setCurrentWidget(DockWidget* widget)
     }
 }
 
+QString DockSite::identifier()
+{
+    QSplitter* splitter = nullptr;
+
+    QWidget* thisWidget = this;
+    QWidget* tempWidget = parentWidget();
+
+    QStringList parts;
+
+    while (tempWidget)
+    {
+        if ((splitter = qobject_cast<QSplitter*>(tempWidget)) != nullptr)
+        {
+            parts.prepend(QString::number(splitter->indexOf(thisWidget)));
+        }
+        else
+        {
+            parts.prepend(tempWidget->objectName()); break;
+        }
+
+        parts.prepend(tempWidget->objectName());
+
+        thisWidget = tempWidget;
+
+        tempWidget = tempWidget->parentWidget();
+    }
+
+    parts.append(objectName());
+
+    return parts.join(",");
+}
+
 bool DockSite::isActive() const
 {
     return impl->_active;
@@ -537,7 +628,7 @@ void DockSite::activate()
 
 bool DockSite::load(const QJsonObject& object)
 {
-    setObjectName(object["objectName"].toString());
+    setObjectName(object["name"].toString());
     setWindowTitle(object["windowTitle"].toString());
     setBaseSize(object["baseW"].toInt(0), object["baseH"].toInt(0));
 
@@ -563,11 +654,11 @@ bool DockSite::load(const QJsonObject& object)
     return true;
 }
 
-bool DockSite::save(QJsonObject& object)
+bool DockSite::save(QJsonObject& object) const
 {
     QSize baseSize = this->baseSize();
 
-    object["objectName"] = objectName();
+    object["name"] = objectName();
     object["windowTitle"] = windowTitle();
     object["baseW"] = baseSize.width();
     object["baseH"] = baseSize.height();
@@ -672,12 +763,16 @@ bool DockSite::eventFilter(QObject* obj, QEvent* evt)
 
                 auto tl = flexWidget->geometry().topLeft() - flexWidget->frameGeometry().topLeft();
                 auto br = flexWidget->frameGeometry().bottomRight() - flexWidget->geometry().bottomRight();
-                flexWidget->setGeometry(QRect(pos + tl - impl->_startPoint, dimension - QSize(tl.x(), tl.y()) - QSize(br.x(), br.y())));
+                auto sz = dimension - QSize(tl.x(), tl.y()) - QSize(br.x(), br.y());
+                flexWidget->setGeometry(QRect(pos + tl - impl->_startPoint, sz));
                 flexWidget->show();
 
                 impl->update(this, dockWidget, 1);
 
                 QApplication::sendPostedEvents();
+
+                QResizeEvent resize(sz, sz);
+                QApplication::sendEvent(flexWidget, &resize);
 
 #ifdef Q_OS_MAC
                 flexWidget->grabMouse();
@@ -809,17 +904,21 @@ void DockSite::mouseMoveEvent(QMouseEvent* evt)
         auto dimension = size();
 
         auto flexWidget = FlexManager::instance()->createFlexWidget(viewMode(), Flex::parent(viewMode()), Flex::windowFlags());
-        
+
         flexWidget->addDockSite(this, Flex::M, -1);
 
         auto tl = flexWidget->geometry().topLeft() - flexWidget->frameGeometry().topLeft();
         auto br = flexWidget->frameGeometry().bottomRight() - flexWidget->geometry().bottomRight();
-        flexWidget->setGeometry(QRect(pos + tl - impl->_startPoint, dimension - QSize(tl.x(), tl.y()) - QSize(br.x(), br.y())));
+        auto sz = dimension - QSize(tl.x(), tl.y()) - QSize(br.x(), br.y());
+        flexWidget->setGeometry(QRect(pos + tl - impl->_startPoint, sz));
         flexWidget->show();
 
         impl->_startDrag = false;
 
         QApplication::sendPostedEvents();
+
+        QResizeEvent resize(sz, sz);
+        QApplication::sendEvent(flexWidget, &resize);
 
 #ifdef Q_OS_MAC
         flexWidget->grabMouse();
@@ -905,7 +1004,11 @@ void DockSite::on_tabBar_tabMoved(int from, int to)
 
 void DockSite::on_tabBar_tabCloseRequested(int index)
 {
+    auto tempWidget = flexWidget();
+
     auto widget = static_cast<DockWidget*>(impl->_tabMdi->widget(index));
+
+    FlexManager::instance()->snapshot(widget);
 
     impl->_tabBar->removeTab(index);
 
@@ -916,8 +1019,6 @@ void DockSite::on_tabBar_tabCloseRequested(int index)
     widget->setParent(nullptr); 
 
     widget->close();
-
-    auto tempWidget = flexWidget();
 
     if (impl->_tabBar->count() == 0)
     {

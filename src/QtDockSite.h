@@ -16,6 +16,9 @@ public:
 
 public:
     bool addWidget(DockWidget* widget);
+    
+public:
+    bool insertWidget(DockWidget* widget, int index = -1);
 
 public:
     void setCurrentWidget(DockWidget* widget);
@@ -54,7 +57,13 @@ public:
     Flex::Features features() const;
 
 public:
+    DockSide* dockSide() const;
+
+public:
     FlexWidget* flexWidget() const;
+
+public:
+    QString identifier();
 
 public:
     bool isActive() const;
@@ -69,7 +78,7 @@ public:
     bool load(const QJsonObject& object);
 
 public:
-    bool save(QJsonObject& object);
+    bool save(QJsonObject& object) const;
 
 protected:
     bool event(QEvent*);

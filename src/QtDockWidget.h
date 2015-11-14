@@ -26,6 +26,13 @@ public:
 
 public:
     DockSite* dockSite() const;
+    DockSide* dockSide() const;
+
+public:
+    FlexWidget* flexWidget() const;
+
+public:
+    QString flexWidgetName() const;
 
 public:
     QWidget* widget() const;
@@ -61,11 +68,15 @@ public:
     bool load(const QJsonObject& object);
 
 public:
-    bool save(QJsonObject& object);
+    bool save(QJsonObject& object) const;
+
+public:
+    QString identifier();
 
 protected:
     bool event(QEvent* evt);
     void paintEvent(QPaintEvent*);
+    void closeEvent(QCloseEvent*);
     bool nativeEvent(const QByteArray& eventType, void * message, long *result);
 
 private Q_SLOTS:
