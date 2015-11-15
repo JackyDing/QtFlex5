@@ -274,7 +274,14 @@ void FlexWidgetImpl::updateViewMode(FlexWidget* self, Flex::ViewMode viewMode, b
     {
         if (first)
         {
-            _viewMode = viewMode;
+            if (viewMode == Flex::ToolPanesView || viewMode == Flex::ToolPagesView)
+            {
+                _viewMode = Flex::ToolView;
+            }
+            else
+            {
+                _viewMode = viewMode;
+            }
         }
         else if ((prevViewMode == Flex::ToolView || prevViewMode == Flex::ToolPanesView || prevViewMode == Flex::ToolPagesView) && (viewMode == Flex::ToolView || viewMode == Flex::ToolPanesView || viewMode == Flex::ToolPagesView))
         {
