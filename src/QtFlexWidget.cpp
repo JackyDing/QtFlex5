@@ -114,6 +114,7 @@ bool FlexWidgetImpl::load(FlexWidget* self, const QJsonArray& objects, QSplitter
             QSplitter* subSplitter = new QSplitter();
             subSplitter->setProperty("Flex", true);
             subSplitter->setObjectName(object["name"].toString());
+            subSplitter->setChildrenCollapsible(false);
             load(self, object["value"].toArray(), subSplitter);
             splitter->addWidget(subSplitter);
         }
@@ -571,6 +572,7 @@ void FlexWidgetImpl::addDockSite(FlexWidget* self, DockSite* dockSite, Qt::Orien
     {
         QSplitter* splitter = new QSplitter(orientation);
         splitter->setProperty("Flex", true);
+        splitter->setChildrenCollapsible(false);
         if (direction == 0)
         {
             splitter->addWidget(dockSite);
@@ -634,6 +636,7 @@ void FlexWidgetImpl::addDockSite(FlexWidget* /*self*/, DockSite* dockSite, int s
         auto sizes = splitter->sizes();
         QSplitter* subSplitter = new QSplitter(orientation);
         subSplitter->setProperty("Flex", true);
+        subSplitter->setChildrenCollapsible(false);
         subSplitter->setObjectName(generate());
         if (direction == 0)
         {
@@ -720,6 +723,7 @@ void FlexWidgetImpl::addFlexWidget(FlexWidget* self, FlexWidget* widget, Qt::Ori
         {
             QSplitter* splitter = new QSplitter(orientation);
             splitter->setProperty("Flex", true);
+            splitter->setChildrenCollapsible(false);
             if (direction == 0)
             {
                 splitter->addWidget(widgetContainer);
@@ -823,6 +827,7 @@ void FlexWidgetImpl::addFlexWidget(FlexWidget* self, FlexWidget* widget, int sit
             auto sizes = splitter->sizes();
             auto subSplitter = new QSplitter(orientation);
             subSplitter->setProperty("Flex", true);
+            subSplitter->setChildrenCollapsible(false);
             subSplitter->setObjectName(generate());
             if (direction == 0)
             {
@@ -942,8 +947,10 @@ FlexWidget::FlexWidget(Flex::ViewMode viewMode, QWidget* parent, Qt::WindowFlags
 
     impl->_siteContainer->setProperty("Flex", true);
     impl->_siteContainer->setObjectName("_flex_siteContainer");
+    impl->_siteContainer->setChildrenCollapsible(false);
     impl->_sideContainer->setProperty("Flex", true);
     impl->_sideContainer->setObjectName("_flex_sideContainer");
+    impl->_sideContainer->setChildrenCollapsible(false);
 
     auto arranger = new QGridLayout(this);
     arranger->setContentsMargins(0, 0, 0, 0);
@@ -1210,13 +1217,15 @@ void FlexWidget::showSiteDockPull(DockSite*)
 
 bool FlexWidget::load(const QJsonObject& object)
 {
-    clearDockSites();
+    clearDockSites(true);
 
     QJsonArray dockSites = object["dockSites"].toArray();
 
     impl->_adjusting = true;
     bool result = impl->load(this, dockSites, impl->_siteContainer);
     impl->_adjusting = false;
+
+    impl->_siteContainer->setStretchFactor(0, 1);
 
     QJsonArray dockSides = object["dockSides"].toArray();
 
@@ -1368,6 +1377,7 @@ bool FlexWidget::restore(const QByteArray& snapshot, const QString& identifer)
                             subSplitter = new QSplitter();
                             subSplitter->setProperty("Flex", true);
                             subSplitter->setObjectName(subSplitterName);
+                            subSplitter->setChildrenCollapsible(false);
                             parSplitter->insertWidget(number, subSplitter);
                         }
 
@@ -1980,43 +1990,66 @@ bool FlexWidget::removeDockSite(DockSite* dockSite)
     return result;
 }
 
-void FlexWidget::clearDockSites()
+void FlexWidget::clearDockSites(bool all)
 {
     impl->_current = nullptr;
 
-    auto adjusting = impl->_adjusting;
+    impl->_hole->setParent(nullptr);
 
+    auto adjusting = impl->_adjusting;
+    impl->_adjusting = true;
     while (!impl->_sites.empty())
     {
         auto dockSite = impl->_sites.back();
 
-        if (dockSite->dockMode() == Flex::DockInSideArea)
-        {
-            for (auto dockSide : impl->_sides)
-            {
-                if (dockSide->hasDockSite(dockSite))
-                {
-                    dockSide->detachDockSite(dockSite); break;
-                }
-            }
-        }
+        dockSite->setParent(nullptr);
 
-        impl->_adjusting = true;
-        if (dockSite->count() == 0)
-        {
-            dockSite->setParent(nullptr); dockSite->deleteLater();
-        }
-        impl->_adjusting = adjusting;
-
-        if (dockSite->dockMode() != Flex::DockInSideArea)
-        {
-            impl->simplify(this, dockSite);
-        }
+        dockSite->deleteLater();
 
         impl->_sites.pop_back();
     }
+    impl->_adjusting = adjusting;
+
+    while (impl->_siteContainer->count() > 0)
+    {
+        QWidget* widget = impl->_siteContainer->widget(0);
+        widget->setParent(nullptr);
+        widget->deleteLater();
+    }
+
+    auto reserving = impl->_reserving;
+    impl->_reserving = true;
+    for (int i = Flex::L; i <= Flex::B; ++i)
+    {
+        for (int j = 0; j < this->count(static_cast<Flex::Direction>(i)); ++j)
+        {
+            auto dockSite = this->dockSite(j, static_cast<Flex::Direction>(i));
+            impl->_sides[i]->detachDockSite(dockSite);
+            dockSite->deleteLater();
+        }
+        impl->_sides[i]->hide();
+    }
+    impl->_reserving = reserving;
+
+    while (impl->_siteContainer->count() > 0)
+    {
+        QWidget* widget = impl->_sideContainer->widget(0);
+        widget->setParent(nullptr);
+        widget->deleteLater();
+    }
+
+    impl->_sideContainer->hide();
+
+    if (!all)
+    {
+        if (!isWindow())
+        {
+            addDockSite(new DockSite(), Flex::M, -1);
+        }
+    }
 
     impl->updateViewMode(this);
+
     impl->updateDockSides(this);
 }
 

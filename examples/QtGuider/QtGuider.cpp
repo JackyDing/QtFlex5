@@ -226,6 +226,11 @@ void QtGuider::on_actionView_N_triggered()
     }
 }
 
+void QtGuider::on_actionTool_N_triggered()
+{
+    FlexManager::instance()->flexWidget("M")->clearDockSites();
+}
+
 void QtGuider::actionFile_X_triggered()
 {
     openFile_N(static_cast<QAction*>(sender())->text().split("-")[1].toInt());

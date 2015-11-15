@@ -27,6 +27,7 @@ private slots:
     void on_actionEdit_Redo_triggered();
     void on_actionFile_N_triggered();
     void on_actionView_N_triggered();
+    void on_actionTool_N_triggered();
 
 private slots:
     void actionView_X_triggered();

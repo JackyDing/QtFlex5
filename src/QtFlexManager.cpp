@@ -284,6 +284,8 @@ void FlexManager::close()
             (*iter)->deleteLater();
         }
     }
+    impl->_dockWidgets.clear();
+    impl->_flexWidgets.clear();
 }
 
 bool FlexManager::load(const QByteArray& content, const QMap<QString, QWidget*>& parents)
@@ -292,23 +294,23 @@ bool FlexManager::load(const QByteArray& content, const QMap<QString, QWidget*>&
 
     QJsonObject object = QJsonDocument::fromJson(content).object();
 
-QJsonArray flexWidgetObjects = object["flexWidgets"].toArray();
+    QJsonArray flexWidgetObjects = object["flexWidgets"].toArray();
 
-for (int i = 0; i < flexWidgetObjects.size(); ++i)
-{
-    QJsonObject flexWidgetObject = flexWidgetObjects[i].toObject();
+    for (int i = 0; i < flexWidgetObjects.size(); ++i)
+    {
+        QJsonObject flexWidgetObject = flexWidgetObjects[i].toObject();
 
-    Flex::ViewMode viewMode = (Flex::ViewMode)flexWidgetObject["viewMode"].toInt();
-    QWidget* parent = parents.value(flexWidgetObject["parent"].toString(), nullptr);
-    Qt::WindowFlags flags = (Qt::WindowFlags)flexWidgetObject["windowFlags"].toInt();
-    QString flexWidgetName = flexWidgetObject["flexWidgetName"].toString();
+        Flex::ViewMode viewMode = (Flex::ViewMode)flexWidgetObject["viewMode"].toInt();
+        QWidget* parent = parents.value(flexWidgetObject["parent"].toString(), nullptr);
+        Qt::WindowFlags flags = (Qt::WindowFlags)flexWidgetObject["windowFlags"].toInt();
+        QString flexWidgetName = flexWidgetObject["flexWidgetName"].toString();
 
-    FlexWidget* flexWidget = createFlexWidget(viewMode, parent, Flex::widgetFlags(), flexWidgetName);
+        FlexWidget* flexWidget = createFlexWidget(viewMode, parent, Flex::widgetFlags(), flexWidgetName);
 
-    flexWidget->load(flexWidgetObject);
-}
+        flexWidget->load(flexWidgetObject);
+    }
 
-return true;
+    return true;
 }
 
 QByteArray FlexManager::save() const

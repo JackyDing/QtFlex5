@@ -54,7 +54,7 @@ public:
     bool removeDockSite(DockSite* dockSite);
 
 public:
-    void clearDockSites();
+    void clearDockSites(bool all = false);
 
 public:
     bool isAdjusting() const;

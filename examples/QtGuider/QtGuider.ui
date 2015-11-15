@@ -117,7 +117,7 @@
     <string>View_N</string>
    </property>
    <property name="shortcut">
-    <string>Ctrl+S</string>
+    <string>Ctrl+V</string>
    </property>
   </action>
   <action name="action_View_0">
@@ -154,10 +154,16 @@
    <property name="text">
     <string>Tool-N</string>
    </property>
+   <property name="shortcut">
+    <string>Ctrl+T</string>
+   </property>
   </action>
   <action name="actionFile_N">
    <property name="text">
     <string>File-N</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+F</string>
    </property>
   </action>
  </widget>
