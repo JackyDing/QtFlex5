@@ -290,7 +290,7 @@ void FlexManager::close()
 
 bool FlexManager::load(const QByteArray& content, const QMap<QString, QWidget*>& parents)
 {
-    close();
+    //close();
 
     QJsonObject object = QJsonDocument::fromJson(content).object();
 
@@ -305,7 +305,9 @@ bool FlexManager::load(const QByteArray& content, const QMap<QString, QWidget*>&
         Qt::WindowFlags flags = (Qt::WindowFlags)flexWidgetObject["windowFlags"].toInt();
         QString flexWidgetName = flexWidgetObject["flexWidgetName"].toString();
 
-        FlexWidget* flexWidget = createFlexWidget(viewMode, parent, Flex::widgetFlags(), flexWidgetName);
+        FlexWidget* flexWidget = flexWidgetName == "RootFlex"
+                ? this->flexWidget("RootFlex")
+                : createFlexWidget(viewMode, parent, Flex::widgetFlags(), flexWidgetName);
 
         flexWidget->load(flexWidgetObject);
     }

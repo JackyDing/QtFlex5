@@ -12,6 +12,8 @@
 #include <QtWidgets/QApplication>
 
 #ifdef Q_OS_WIN
+#define _WIN32_WINNT 0x0600
+
 #include <qpa/qplatformnativeinterface.h>
 #endif
 
@@ -322,9 +324,12 @@ void FlexHelperImplWin::redrawFrame(HWND hwnd)
     int br = rc.right - pt.x - cc.right + cc.left;
     int bb = rc.bottom - pt.y - cc.bottom + cc.top;
     FillRect(cDc, &sc, hBr);
-    FillRect(cDc, &RECT{ sc.right - 36 * 1, 2, sc.right - 36 * 0 - 2, 32 }, _test == HTCLOSE ? hBc : hBb);
-    FillRect(cDc, &RECT{ sc.right - 36 * 2, 2, sc.right - 36 * 1 - 2, 32 }, _test == HTMAXBUTTON ? hBa : hBb);
-    FillRect(cDc, &RECT{ sc.right - 36 * 3, 2, sc.right - 36 * 2 - 2, 32 }, _test == HTMINBUTTON ? hBa : hBb);
+    RECT tmp1 = { sc.right - 36 * 1, 2, sc.right - 36 * 0 - 2, 32 };
+    FillRect(cDc, &tmp1, _test == HTCLOSE ? hBc : hBb);
+    RECT tmp2 = { sc.right - 36 * 2, 2, sc.right - 36 * 1 - 2, 32 };
+    FillRect(cDc, &tmp2, _test == HTMAXBUTTON ? hBa : hBb);
+    RECT tmp3 = { sc.right - 36 * 3, 2, sc.right - 36 * 2 - 2, 32 };
+    FillRect(cDc, &tmp3, _test == HTMINBUTTON ? hBa : hBb);
     BitBlt(hDc, 0, 0, bl, h, cDc, 0, 0, SRCCOPY);
     BitBlt(hDc, 0, 0, w, bt, cDc, 0, 0, SRCCOPY);
     BitBlt(hDc, w - br, 0, br, h, cDc, 0, 0, SRCCOPY);
@@ -356,7 +361,8 @@ void FlexHelperImplWin::updateFrame(HWND hwnd)
     {
         if (_dwmEnabled)
         {
-            if (PtrDwmExtendFrameIntoClientArea(hwnd, &MARGINS{ 1, 1, 1, 1 }) == S_OK)
+            MARGINS tmp = { 1, 1, 1, 1 };
+            if (PtrDwmExtendFrameIntoClientArea(hwnd, &tmp) == S_OK)
             {
             }
         }
