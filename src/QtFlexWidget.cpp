@@ -1234,8 +1234,8 @@ bool FlexWidget::load(const QJsonObject& object)
 //     {
 //         addDockSite(new DockSite());
 //     }
-
-    impl->_adjusting = true;
+	impl->_siteContainer->setOrientation((Qt::Orientation)dockSites[0].toObject()["orientation"].toInt());
+	impl->_adjusting = true;
     bool result = impl->load(this, dockSites, impl->_siteContainer);
     impl->_adjusting = false;
 
