@@ -60,7 +60,7 @@ public:
     void update(FlexWidget* self);
 
 public:
-    void addDockSite(FlexWidget* self, DockSite* dockSite, Qt::Orientation orientation, int direction);
+    void addDockSite(FlexWidget* self, DockSite* dockSite, Qt::Orientation orientation, int direction, QSplitter* parent = nullptr);
     void addDockSite(FlexWidget* self, DockSite* dockSite, int siteIndex, Qt::Orientation orientation, int direction, int hint);
     void addFlexWidget(FlexWidget* self, FlexWidget* widget, Qt::Orientation orientation, int direction);
     void addFlexWidget(FlexWidget* self, FlexWidget* widget, int siteIndex, Qt::Orientation orientation, int direction, int hint);
@@ -111,25 +111,23 @@ bool FlexWidgetImpl::load(FlexWidget* self, const QJsonArray& objects, QSplitter
 
         if (object["type"] == "wrapper")
         {
-            QSplitter* subSplitter = new QSplitter();
+			auto arr = object["value"].toArray();
+            QSplitter* subSplitter = new QSplitter((Qt::Orientation)arr[0].toObject()["orientation"].toInt(), splitter);
             subSplitter->setProperty("Flex", true);
             subSplitter->setObjectName(object["name"].toString());
             subSplitter->setChildrenCollapsible(false);
-            load(self, object["value"].toArray(), subSplitter);
-            splitter->addWidget(subSplitter);
+            load(self, arr, subSplitter);
         }
         else
         {
-            DockSite* dockSite = new DockSite();
-
-            dockSite->load(object["value"].toObject());
-
-            _sites.append(dockSite);
-
-            splitter->addWidget(dockSite);
+			auto site = new DockSite();
+			_sites.append(site);
+			addDockSite(self, site, (Qt::Orientation)object["orientation"].toInt(), 0, splitter);
+			site->load(object["value"].toObject());
+			site->show(); site->setFocus();
         }
 
-        splitter->setOrientation((Qt::Orientation)object["orientation"].toInt());
+        //splitter->setOrientation((Qt::Orientation)object["orientation"].toInt());
 
         sizes << object["size"].toInt();
     }
@@ -550,19 +548,23 @@ void FlexWidgetImpl::update(FlexWidget* self)
     }
 }
 
-void FlexWidgetImpl::addDockSite(FlexWidget* self, DockSite* dockSite, Qt::Orientation orientation, int direction)
+void FlexWidgetImpl::addDockSite(FlexWidget* self, DockSite* dockSite, Qt::Orientation orientation, int direction, QSplitter* parentSpliter)
 {
-    int width = _siteContainer->width();
-    int height = _siteContainer->height();
-    int space = _siteContainer->handleWidth() / 2;
+	if (!parentSpliter)
+	{
+		parentSpliter = _siteContainer;
+	}
+    int width = parentSpliter->width();
+    int height = parentSpliter->height();
+    int space = parentSpliter->handleWidth() / 2;
     int newValue = (orientation == Qt::Horizontal ? width : height) / 2 - space;
-    if (_siteContainer->count() == 1)
+    if (parentSpliter->count() == 1)
     {
-        _siteContainer->setOrientation(orientation);
+		parentSpliter->setOrientation(orientation);
     }
-    if (_siteContainer->orientation() == orientation)
+    if (parentSpliter->orientation() == orientation)
     {
-        auto sizes = _siteContainer->sizes();
+        auto sizes = parentSpliter->sizes();
         std::for_each(sizes.begin(), sizes.end(), [=](int& n) { n = 0.5f * n; });
         if (direction == 0)
         {
@@ -572,8 +574,9 @@ void FlexWidgetImpl::addDockSite(FlexWidget* self, DockSite* dockSite, Qt::Orien
         {
             sizes.append(newValue);
         }
-        _siteContainer->insertWidget(0, dockSite);
-        _siteContainer->setSizes(sizes);
+		//parentSpliter->insertWidget(0, dockSite);
+		parentSpliter->addWidget(dockSite);
+		parentSpliter->setSizes(sizes);
     }
     else
     {
@@ -583,18 +586,18 @@ void FlexWidgetImpl::addDockSite(FlexWidget* self, DockSite* dockSite, Qt::Orien
         if (direction == 0)
         {
             splitter->addWidget(dockSite);
-            splitter->addWidget(_siteContainer);
+            splitter->addWidget(parentSpliter);
         }
         else
         {
-            splitter->addWidget(_siteContainer);
+            splitter->addWidget(parentSpliter);
             splitter->addWidget(dockSite);
         }
         splitter->setSizes(QList<int>() << newValue << newValue);
         qobject_cast<QGridLayout*>(self->layout())->addWidget(splitter, 1, 1, 1, 1);
-        _siteContainer->setObjectName(generate());
-        _siteContainer = splitter;
-        _siteContainer->setObjectName("_flex_siteContainer");
+		parentSpliter->setObjectName(generate());
+		_siteContainer = splitter;
+		parentSpliter->setObjectName("_flex_siteContainer");
     }
 }
 
@@ -1227,8 +1230,12 @@ bool FlexWidget::load(const QJsonObject& object)
     clearDockSites(true);
 
     QJsonArray dockSites = object["dockSites"].toArray();
-
-    impl->_adjusting = true;
+//     for (int i = 0; i < dockSites.count(); ++i)
+//     {
+//         addDockSite(new DockSite());
+//     }
+	impl->_siteContainer->setOrientation((Qt::Orientation)dockSites[0].toObject()["orientation"].toInt());
+	impl->_adjusting = true;
     bool result = impl->load(this, dockSites, impl->_siteContainer);
     impl->_adjusting = false;
 

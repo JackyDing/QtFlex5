@@ -5,6 +5,8 @@
 
 int main(int argc, char *argv[])
 {
+	QGuiApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
+
     qsrand(clock());
 
     QApplication a(argc, argv);

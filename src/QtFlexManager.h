@@ -1,6 +1,10 @@
 #ifndef QTFLEXMANAGER_H
 #define QTFLEXMANAGER_H
 
+#ifdef Q_OS_WIN
+#define _WIN32_WINNT 0x0600
+#endif
+
 #include <QtCore/QScopedPointer>
 #include <QtWidgets/QSplitter>
 

@@ -247,15 +247,32 @@ void DockSide::mousePressEvent(QMouseEvent* evt)
 {
     impl->hittest(this, evt->pos());
 
-    if (impl->_over != -1 && impl->_curr != impl->_over)
+    if (impl->_over == -1)
     {
-        auto prev = impl->_curr != -1 ? impl->_dockSites[impl->_curr] : nullptr;
-        auto curr = impl->_dockSites[impl->_over];
-
-        impl->_curr = impl->_over;
-
-        emit currentChanged(this, prev, curr);
+        return;
     }
+
+    auto curr = impl->_dockSites[impl->_over];
+    if (impl->_curr == impl->_over)
+    {
+        curr->blockSignals(true);
+        if (curr->isActive())
+        {
+            curr->hide();
+        }
+        else
+        {
+            curr->raise();
+            curr->show();
+            curr->activate();
+        }
+        curr->blockSignals(false);
+        return;
+    }
+
+    auto prev = impl->_curr != -1 ? impl->_dockSites[impl->_curr] : nullptr;
+    impl->_curr = impl->_over;
+    emit currentChanged(this, prev, curr);
 }
 
 void DockSide::enterEvent(QEvent*)

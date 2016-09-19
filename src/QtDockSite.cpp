@@ -191,8 +191,8 @@ void DockSiteImpl::adjust(DockSite* self, DockWidget* widget)
     if (_persistent || !widget || widget->viewMode() == Flex::FileView || widget->viewMode() == Flex::FilePagesView)
     {
         tabPalette.setColor(QPalette::Active, QPalette::Highlight, QColor("#FFF29D"));
-        tabPalette.setColor(QPalette::Inactive, QPalette::Highlight, QColor("#4D6082"));
-        tabPalette.setColor(QPalette::Active, QPalette::Window, QColor("#5B7199"));
+		tabPalette.setColor(QPalette::Inactive, QPalette::Highlight, QColor("#4D6082"));
+		tabPalette.setColor(QPalette::Active, QPalette::Window, QColor("#5B7199"));
         tabPalette.setColor(QPalette::Inactive, QPalette::Window, QColor("#364E6F"));
         tabPalette.setColor(QPalette::Active, QPalette::WindowText, QColor("#000000"));
         tabPalette.setColor(QPalette::Inactive, QPalette::WindowText, QColor("#FFFFFF"));
@@ -442,8 +442,13 @@ bool DockSite::insertWidget(DockWidget* widget, int index)
         impl->_tabMdi->blockSignals(false);
     }
 
-    if (impl->_tabBar->count() > 1 || impl->_persistent)
+    if (impl->_tabBar->count() > 1
+		|| impl->_persistent
+		|| widget->viewMode() == Flex::FileView
+		|| widget->viewMode() == Flex::FilePagesView)
     {
+		//用resize不太完美..
+		impl->_tabBar->setFixedHeight(impl->_tabBar->sizeHint().height());
         impl->_tabBar->show(); impl->_tabBar->setCurrentIndex(impl->_tabBar->count() - 1);
     }
     else
@@ -649,7 +654,8 @@ bool DockSite::load(const QJsonObject& object)
         dockWidget->load(dockWidgetObject);
 
         addWidget(dockWidget);
-    }
+	}
+
 
     return true;
 }
