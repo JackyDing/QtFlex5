@@ -25,6 +25,9 @@ public:
     void setWindowInfo(int titleBarHeight, Qt::WindowFlags windowFlags);
 
 public:
+    void layout(int);
+
+public:
     QWidget* buttons() const;
     QWidget* extents() const;
 

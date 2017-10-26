@@ -189,7 +189,7 @@ void DockWidget::paintEvent(QPaintEvent*)
 {
     QStylePainter painter(this);
 
-    painter.fillRect(rect(), impl->_background);
+    painter.fillRect(rect().adjusted(5, 5, -5, -5), impl->_background);
 
     QRect titleBarRect;
 
