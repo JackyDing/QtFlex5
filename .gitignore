@@ -114,3 +114,4 @@ UpgradeLog*.XML
 .DS_Store
 *.plist
 DerivedData/
+.vs/

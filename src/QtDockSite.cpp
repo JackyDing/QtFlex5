@@ -33,11 +33,19 @@ public:
         setProperty("Flex", true);
         setProperty("active", false);
     }
+
+public:
+    QSize sizeHint() const
+    {
+        return QSize(100, shape() == QTabBar::RoundedNorth ? 22 : 21);
+    }
+
 public:
     QSize tabSizeHint(int index) const
     {
         return QSize(QTabBar::tabSizeHint(index).width(), shape() == QTabBar::RoundedNorth ? 22 : 21);
     }
+
 public:
     void closeTab(int index)
     {
