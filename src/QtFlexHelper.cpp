@@ -927,7 +927,9 @@ bool FlexHelper::nativeEvent(const QByteArray&, void* event, long* result)
                 FlexHelperImplWin::_hook = SetWindowsHookEx(WH_KEYBOARD, FlexHelperImplWin::keyEvent, NULL, GetCurrentThreadId());
             }
         }
+#if QT_VERSION <= QT_VERSION_CHECK(5, 7, 1)
         QApplication::sendPostedEvents(nullptr, QEvent::DeferredDelete);
+#endif
         break;
     }
     case WM_EXITSIZEMOVE:
@@ -942,7 +944,9 @@ bool FlexHelper::nativeEvent(const QByteArray&, void* event, long* result)
             }
             QMetaObject::invokeMethod(object, "leaveMove", Q_ARG(QObject*, object));
         }
+#if QT_VERSION <= QT_VERSION_CHECK(5, 7, 1)
         QApplication::sendPostedEvents(nullptr, QEvent::DeferredDelete);
+#endif
         break;
     }
     case WM_DWMCOMPOSITIONCHANGED:
@@ -1000,16 +1004,26 @@ bool FlexHelper::nativeEvent(const QByteArray&, void* event, long* result)
         }
         else if (wParam == SIZE_RESTORED)
         {
+            auto widget = QWidget::find(reinterpret_cast<WId>(hwnd));
+            if (widget == nullptr)
+            {
+                break;
+            }
             d->_lock = 1;
-            QGuiApplication::platformNativeInterface()->setWindowProperty(QWidget::find(reinterpret_cast<WId>(hwnd))->windowHandle()->handle(), QByteArrayLiteral("WindowsCustomMargins"), QVariant::fromValue(QMargins(-8, -31, -8, -8)));
+            QGuiApplication::platformNativeInterface()->setWindowProperty(widget->windowHandle()->handle(), QByteArrayLiteral("WindowsCustomMargins"), QVariant::fromValue(QMargins(-8, -31, -8, -8)));
             d->_lock = 0;
             d->_buttons->maxButton()->setButton(Flex::Maximize);
             d->_buttons->maxButton()->setToolTip(QWidget::tr("Maximize"));
         }
         else if (wParam == SIZE_MAXIMIZED)
         {
+            auto widget = QWidget::find(reinterpret_cast<WId>(hwnd));
+            if (widget == nullptr)
+            {
+                break;
+            }
             d->_lock = 1;
-            QGuiApplication::platformNativeInterface()->setWindowProperty(QWidget::find(reinterpret_cast<WId>(hwnd))->windowHandle()->handle(), QByteArrayLiteral("WindowsCustomMargins"), QVariant::fromValue(QMargins(+8, -31, -8, +8)));
+            QGuiApplication::platformNativeInterface()->setWindowProperty(widget->windowHandle()->handle(), QByteArrayLiteral("WindowsCustomMargins"), QVariant::fromValue(QMargins(+8, -31, -8, +8)));
             d->_lock = 0;
             d->_buttons->maxButton()->setToolTip(QWidget::tr("Restore"));
             d->_buttons->maxButton()->setButton(Flex::Restore);
