@@ -21,6 +21,11 @@ public:
     Flex::Direction direction() const;
 
 public:
+    bool isLocked() const;
+    void lockit();
+    void unlock();
+
+public:
     QSize sizeHint() const;
 
 public:

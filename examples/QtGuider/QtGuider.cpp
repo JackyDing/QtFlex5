@@ -48,7 +48,22 @@ QtCentral::QtCentral(QWidget* parent) : QWidget(parent)
 
 void QtCentral::createOne()
 {
-    auto content = FlexManager::instance()->createFlexWidget(Flex::HybridView, this, Flex::widgetFlags(), "M");
+    auto content = FlexManager::instance()->createFlexWidget(Flex::HybridView, this, Flex::widgetFlags(), "X");
+
+    DockWidget* aWidget = FlexManager::instance()->createDockWidget(Flex::FileView, content, Flex::widgetFlags(), "A");
+    aWidget->setViewMode(Flex::FileView);
+    aWidget->setWindowTitle("AFile");
+    DockWidget* bWidget = FlexManager::instance()->createDockWidget(Flex::FileView, content, Flex::widgetFlags(), "B");
+    bWidget->setViewMode(Flex::FileView);
+    bWidget->setWindowTitle("BFile");
+    DockWidget* cWidget = FlexManager::instance()->createDockWidget(Flex::FileView, content, Flex::widgetFlags(), "C");
+    cWidget->setViewMode(Flex::FileView);
+    cWidget->setWindowTitle("CFile");
+
+    content->addDockWidget(aWidget, Flex::M, 0);
+    content->addDockWidget(bWidget, Flex::M, 0);
+    content->addDockWidget(cWidget, Flex::M, 0);
+
     layout()->addWidget(content);
 }
 
@@ -64,7 +79,7 @@ void QtCentral::createTwo()
 
 void QtCentral::on_flexWidgetCreated(FlexWidget* flexWidget)
 {
-    if (flexWidget->objectName() == "M")
+    if (flexWidget->objectName() == "X")
     {
         layout()->addWidget(flexWidget);
     }
@@ -228,7 +243,7 @@ void QtGuider::on_actionView_N_triggered()
 
 void QtGuider::on_actionTool_N_triggered()
 {
-    FlexManager::instance()->flexWidget("M")->clearDockSites();
+    FlexManager::instance()->flexWidget("X")->clearDockSites();
 }
 
 void QtGuider::actionFile_X_triggered()

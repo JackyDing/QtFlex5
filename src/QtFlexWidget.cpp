@@ -58,15 +58,39 @@ public:
     void updateViewMode(FlexWidget* self, Flex::ViewMode viewMode, bool first);
     void updateViewMode(FlexWidget* self);
     void update(FlexWidget* self);
+    void update(QSplitter* splitter);
 
 public:
-    void addDockSite(FlexWidget* self, DockSite* dockSite, Qt::Orientation orientation, int direction);
-    void addDockSite(FlexWidget* self, DockSite* dockSite, int siteIndex, Qt::Orientation orientation, int direction, int hint);
-    void addFlexWidget(FlexWidget* self, FlexWidget* widget, Qt::Orientation orientation, int direction);
-    void addFlexWidget(FlexWidget* self, FlexWidget* widget, int siteIndex, Qt::Orientation orientation, int direction, int hint);
+    bool addDockSite(FlexWidget* self, DockSite* dockSite, Qt::Orientation orientation, int direction);
+    bool addDockSite(FlexWidget* self, DockSite* dockSite, int siteIndex, Qt::Orientation orientation, int direction, int hint);
+    bool addFlexWidget(FlexWidget* self, FlexWidget* widget, Qt::Orientation orientation, int direction);
+    bool addFlexWidget(FlexWidget* self, FlexWidget* widget, int siteIndex, Qt::Orientation orientation, int direction, int hint);
 
 public:
     void simplify(FlexWidget* self, DockSite*);
+
+public:
+    int getFactor(Flex::ViewMode viewMode)
+    {
+        switch (viewMode)
+        {
+        case Flex::ToolView:
+            return 0;
+        case Flex::ToolPanesView:
+            return 0;
+        case Flex::ToolPagesView:
+            return 0;
+        case Flex::FileView:
+            return 1;
+        case Flex::FilePanesView:
+            return 1;
+        case Flex::FilePagesView:
+            return 1;
+        case Flex::HybridView:
+            return 1;
+        }
+        return 0;
+    }
 
 public:
     bool isTitleBarVisible(FlexWidget* self, QRect* rect = nullptr) const;
@@ -75,7 +99,7 @@ public:
     bool load(FlexWidget* self, const QJsonArray& objects, QSplitter* splitter);
 
 public:
-    bool save(const FlexWidget* self, QJsonArray& objects, QSplitter* splitter) const;
+    bool save(FlexWidget* self, QJsonArray& objects, QSplitter* splitter);
 
 public:
     QJsonObject find(const QJsonObject& object, const QStringList& path, int& index) const;
@@ -99,47 +123,55 @@ public:
     Flex::ViewMode _viewMode = Flex::HybridView;
     bool _adjusting = false;
     bool _reserving = false;
+    bool _locked = false;
 };
 
 bool FlexWidgetImpl::load(FlexWidget* self, const QJsonArray& objects, QSplitter* splitter)
 {
     QList<int> sizes;
-
+    std::vector<Flex::ViewMode> modes;
     for (int i = 0; i < objects.count(); ++i)
     {
         QJsonObject object = objects[i].toObject();
-
         if (object["type"] == "wrapper")
         {
-            QSplitter* subSplitter = new QSplitter();
-            subSplitter->setProperty("Flex", true);
-            subSplitter->setObjectName(object["name"].toString());
-            subSplitter->setChildrenCollapsible(false);
-            load(self, object["value"].toArray(), subSplitter);
-            splitter->addWidget(subSplitter);
+            QSplitter* wrapper = new QSplitter();
+            wrapper->setProperty("Flex", true);
+            wrapper->setObjectName(object["name"].toString());
+            wrapper->setChildrenCollapsible(false);
+            load(self, object["value"].toArray(), wrapper);
+            splitter->addWidget(wrapper);
+            modes.push_back(wrapper->property("Mode").value<Flex::ViewMode>());
         }
         else
         {
             DockSite* dockSite = new DockSite();
-
             dockSite->load(object["value"].toObject());
-
             _sites.append(dockSite);
-
             splitter->addWidget(dockSite);
+            modes.push_back(dockSite->viewMode());
         }
-
         splitter->setOrientation((Qt::Orientation)object["orientation"].toInt());
-
         sizes << object["size"].toInt();
     }
-
     splitter->setSizes(sizes);
-
+    for (int i = 0; i < modes.size(); i++)
+    {
+        splitter->setStretchFactor(i, getFactor(modes[i]));
+    }
+    Flex::ViewMode viewMode = Flex::ToolView;
+    for (int i = 0; i < modes.size(); i++)
+    {
+        if (viewMode < modes[i])
+        {
+            viewMode = modes[i];
+        }
+    }
+    splitter->setProperty("Mode", viewMode);
     return true;
 }
 
-bool FlexWidgetImpl::save(const FlexWidget* self, QJsonArray& objects, QSplitter* splitter) const
+bool FlexWidgetImpl::save(FlexWidget* self, QJsonArray& objects, QSplitter* splitter)
 {
     auto sizes = splitter->sizes();
 
@@ -362,62 +394,96 @@ void FlexWidgetImpl::update(FlexWidget* self)
     switch (self->viewMode())
     {
     case Flex::ToolView:
-        palette.setColor(QPalette::Active, self->backgroundRole(), QColor("#FFF29D"));
-        palette.setColor(QPalette::Inactive, self->backgroundRole(), QColor("#4D6082"));
-        palette.setColor(QPalette::Active, QPalette::Highlight, QColor("#FFF29D"));
-        palette.setColor(QPalette::Inactive, QPalette::Highlight, QColor("#4D6082"));
-        palette.setColor(QPalette::Active, self->foregroundRole(), QColor("#000000"));
-        palette.setColor(QPalette::Inactive, self->foregroundRole(), QColor("#FFFFFF"));
+        //palette.setColor(QPalette::Active, self->backgroundRole(), QColor("#FFF29D"));
+        //palette.setColor(QPalette::Inactive, self->backgroundRole(), QColor("#4D6082"));
+        //palette.setColor(QPalette::Active, QPalette::Highlight, QColor("#FFF29D"));
+        //palette.setColor(QPalette::Inactive, QPalette::Highlight, QColor("#4D6082"));
+        //palette.setColor(QPalette::Active, self->foregroundRole(), QColor("#000000"));
+        //palette.setColor(QPalette::Inactive, self->foregroundRole(), QColor("#FFFFFF"));
+        palette.setColor(QPalette::Active, self->backgroundRole(), QColor("#007ACC"));
+        palette.setColor(QPalette::Inactive, self->backgroundRole(), QColor("#2D2D30"));
+        palette.setColor(QPalette::Active, QPalette::Highlight, QColor("#007ACC"));
+        palette.setColor(QPalette::Inactive, QPalette::Highlight, QColor("#2D2D30"));
+        palette.setColor(QPalette::Active, self->foregroundRole(), QColor("#FFFFFF"));
+        palette.setColor(QPalette::Inactive, self->foregroundRole(), QColor("#7F8899"));
         _titleBarHeight = self->style()->pixelMetric(QStyle::PM_TitleBarHeight, nullptr, self) - 4;
         _frameWidth = 1;
         break;
     case Flex::ToolPanesView:
-        palette.setColor(QPalette::All, self->backgroundRole(), QColor("#293955"));
-        palette.setColor(QPalette::Active, QPalette::Highlight, QColor("#293955"));
-        palette.setColor(QPalette::Inactive, QPalette::Highlight, QColor("#293955"));
+        //palette.setColor(QPalette::All, self->backgroundRole(), QColor("#293955"));
+        //palette.setColor(QPalette::Active, QPalette::Highlight, QColor("#293955"));
+        //palette.setColor(QPalette::Inactive, QPalette::Highlight, QColor("#293955"));
+        //palette.setColor(QPalette::Active, self->foregroundRole(), QColor("#FFFFFF"));
+        //palette.setColor(QPalette::Inactive, self->foregroundRole(), QColor("#7F8899"));
+        palette.setColor(QPalette::All, self->backgroundRole(), QColor("#2D2D30"));
+        palette.setColor(QPalette::Active, QPalette::Highlight, QColor("#2D2D30"));
+        palette.setColor(QPalette::Inactive, QPalette::Highlight, QColor("#2D2D30"));
         palette.setColor(QPalette::Active, self->foregroundRole(), QColor("#FFFFFF"));
         palette.setColor(QPalette::Inactive, self->foregroundRole(), QColor("#7F8899"));
         _titleBarHeight = self->style()->pixelMetric(QStyle::PM_TitleBarHeight, nullptr, self) + 8;
         _frameWidth = self->style()->pixelMetric(QStyle::PM_SplitterWidth, nullptr, self);
         break;
     case Flex::ToolPagesView:
-        palette.setColor(QPalette::All, self->backgroundRole(), QColor("#293955"));
-        palette.setColor(QPalette::Active, QPalette::Highlight, QColor("#FFF29D"));
-        palette.setColor(QPalette::Inactive, QPalette::Highlight, QColor("#293955"));
-        palette.setColor(QPalette::Active, self->foregroundRole(), QColor("#000000"));
-        palette.setColor(QPalette::Inactive, self->foregroundRole(), QColor("#FFFFFF"));
+        //palette.setColor(QPalette::All, self->backgroundRole(), QColor("#293955"));
+        //palette.setColor(QPalette::Active, QPalette::Highlight, QColor("#FFF29D"));
+        //palette.setColor(QPalette::Inactive, QPalette::Highlight, QColor("#293955"));
+        //palette.setColor(QPalette::Active, self->foregroundRole(), QColor("#000000"));
+        //palette.setColor(QPalette::Inactive, self->foregroundRole(), QColor("#FFFFFF"));
+        palette.setColor(QPalette::All, self->backgroundRole(), QColor("#2D2D30"));
+        palette.setColor(QPalette::Active, QPalette::Highlight, QColor("#007ACC"));
+        palette.setColor(QPalette::Inactive, QPalette::Highlight, QColor("#2D2D30"));
+        palette.setColor(QPalette::Active, self->foregroundRole(), QColor("#FFFFFF"));
+        palette.setColor(QPalette::Inactive, self->foregroundRole(), QColor("#7F8899"));
         _titleBarHeight = self->style()->pixelMetric(QStyle::PM_TitleBarHeight, nullptr, self) - 4;
         _frameWidth = 1;
         break;
     case Flex::FileView:
-        palette.setColor(QPalette::All, self->backgroundRole(), QColor("#293955"));
-        palette.setColor(QPalette::Active, QPalette::Highlight, QColor("#293955"));
-        palette.setColor(QPalette::Inactive, QPalette::Highlight, QColor("#293955"));
+        //palette.setColor(QPalette::All, self->backgroundRole(), QColor("#293955"));
+        //palette.setColor(QPalette::Active, QPalette::Highlight, QColor("#293955"));
+        //palette.setColor(QPalette::Inactive, QPalette::Highlight, QColor("#293955"));
+        //palette.setColor(QPalette::Active, self->foregroundRole(), QColor("#FFFFFF"));
+        //palette.setColor(QPalette::Inactive, self->foregroundRole(), QColor("#7F8899"));
+        palette.setColor(QPalette::All, self->backgroundRole(), QColor("#2D2D30"));
+        palette.setColor(QPalette::Active, QPalette::Highlight, QColor("#2D2D30"));
+        palette.setColor(QPalette::Inactive, QPalette::Highlight, QColor("#666666"));
         palette.setColor(QPalette::Active, self->foregroundRole(), QColor("#FFFFFF"));
         palette.setColor(QPalette::Inactive, self->foregroundRole(), QColor("#7F8899"));
         _titleBarHeight = self->style()->pixelMetric(QStyle::PM_TitleBarHeight, nullptr, self) + 8;
         _frameWidth = self->style()->pixelMetric(QStyle::PM_SplitterWidth, nullptr, self);
         break;
     case Flex::FilePanesView:
-        palette.setColor(QPalette::All, self->backgroundRole(), QColor("#293955"));
+        //palette.setColor(QPalette::All, self->backgroundRole(), QColor("#293955"));
+        //palette.setColor(QPalette::Active, self->foregroundRole(), QColor("#FFFFFF"));
+        //palette.setColor(QPalette::Inactive, self->foregroundRole(), QColor("#7F8899"));
+        palette.setColor(QPalette::All, self->backgroundRole(), QColor("#2D2D30"));
         palette.setColor(QPalette::Active, self->foregroundRole(), QColor("#FFFFFF"));
         palette.setColor(QPalette::Inactive, self->foregroundRole(), QColor("#7F8899"));
         _titleBarHeight = self->style()->pixelMetric(QStyle::PM_TitleBarHeight, nullptr, self) + 8;
         _frameWidth = self->style()->pixelMetric(QStyle::PM_SplitterWidth, nullptr, self);
         break;
     case Flex::FilePagesView:
-        palette.setColor(QPalette::All, self->backgroundRole(), QColor("#293955"));
-        palette.setColor(QPalette::Active, QPalette::Highlight, QColor("#293955"));
-        palette.setColor(QPalette::Inactive, QPalette::Highlight, QColor("#293955"));
+        //palette.setColor(QPalette::All, self->backgroundRole(), QColor("#293955"));
+        //palette.setColor(QPalette::Active, QPalette::Highlight, QColor("#293955"));
+        //palette.setColor(QPalette::Inactive, QPalette::Highlight, QColor("#293955"));
+        //palette.setColor(QPalette::Active, self->foregroundRole(), QColor("#FFFFFF"));
+        //palette.setColor(QPalette::Inactive, self->foregroundRole(), QColor("#7F8899"));
+        palette.setColor(QPalette::All, self->backgroundRole(), QColor("#2D2D30"));
+        palette.setColor(QPalette::Active, QPalette::Highlight, QColor("#2D2D30"));
+        palette.setColor(QPalette::Inactive, QPalette::Highlight, QColor("#666666"));
         palette.setColor(QPalette::Active, self->foregroundRole(), QColor("#FFFFFF"));
         palette.setColor(QPalette::Inactive, self->foregroundRole(), QColor("#7F8899"));
         _titleBarHeight = self->style()->pixelMetric(QStyle::PM_TitleBarHeight, nullptr, self) + 8;
         _frameWidth = self->style()->pixelMetric(QStyle::PM_SplitterWidth, nullptr, self);
         break;
     case Flex::HybridView:
-        palette.setColor(QPalette::All, self->backgroundRole(), QColor("#293955"));
-        palette.setColor(QPalette::Active, QPalette::Highlight, QColor("#293955"));
-        palette.setColor(QPalette::Inactive, QPalette::Highlight, QColor("#293955"));
+        //palette.setColor(QPalette::All, self->backgroundRole(), QColor("#293955"));
+        //palette.setColor(QPalette::Active, QPalette::Highlight, QColor("#293955"));
+        //palette.setColor(QPalette::Inactive, QPalette::Highlight, QColor("#293955"));
+        //palette.setColor(QPalette::Active, self->foregroundRole(), QColor("#FFFFFF"));
+        //palette.setColor(QPalette::Inactive, self->foregroundRole(), QColor("#7F8899"));
+        palette.setColor(QPalette::All, self->backgroundRole(), QColor("#2D2D30"));
+        palette.setColor(QPalette::Active, QPalette::Highlight, QColor("#2D2D30"));
+        palette.setColor(QPalette::Inactive, QPalette::Highlight, QColor("#666666"));
         palette.setColor(QPalette::Active, self->foregroundRole(), QColor("#FFFFFF"));
         palette.setColor(QPalette::Inactive, self->foregroundRole(), QColor("#7F8899"));
         _titleBarHeight = self->style()->pixelMetric(QStyle::PM_TitleBarHeight, nullptr, self) + 8;
@@ -440,6 +506,11 @@ void FlexWidgetImpl::update(FlexWidget* self)
     {
         return;
     }
+
+    bool floating = self->isFloating();
+
+    _helper->buttons()->setVisible(floating);
+    _helper->extents()->setVisible(floating);
 
     QWidget* parent = nullptr;
 
@@ -550,7 +621,49 @@ void FlexWidgetImpl::update(FlexWidget* self)
     }
 }
 
-void FlexWidgetImpl::addDockSite(FlexWidget* self, DockSite* dockSite, Qt::Orientation orientation, int direction)
+void FlexWidgetImpl::update(QSplitter* splitter)
+{
+    std::vector<Flex::ViewMode> modes;
+    for (int i = 0; i < splitter->count(); i++)
+    {
+        QWidget* widget = splitter->widget(i);
+        if (QSplitter* wrapper = qobject_cast<QSplitter*>(widget))
+        {
+            if (wrapper->property("Flex").isValid())
+            {
+                update(wrapper);
+                modes.push_back(wrapper->property("Mode").value<Flex::ViewMode>());
+            }
+            else
+            {
+                modes.push_back(Flex::ToolView);
+            }
+        }
+        else if (DockSite* dockSite = qobject_cast<DockSite*>(widget))
+        {
+            modes.push_back(dockSite->viewMode());
+        }
+        else
+        {
+            modes.push_back(Flex::ToolView);
+        }
+    }
+    for (int i = 0; i < modes.size(); i++)
+    {
+        splitter->setStretchFactor(i, getFactor(modes[i]));
+    }
+    Flex::ViewMode viewMode = Flex::ToolView;
+    for (int i = 0; i < modes.size(); i++)
+    {
+        if (viewMode < modes[i])
+        {
+            viewMode = modes[i];
+        }
+    }
+    splitter->setProperty("Mode", viewMode);
+}
+
+bool FlexWidgetImpl::addDockSite(FlexWidget* self, DockSite* dockSite, Qt::Orientation orientation, int direction)
 {
     int width = _siteContainer->width();
     int height = _siteContainer->height();
@@ -596,10 +709,15 @@ void FlexWidgetImpl::addDockSite(FlexWidget* self, DockSite* dockSite, Qt::Orien
         _siteContainer = splitter;
         _siteContainer->setObjectName("_flex_siteContainer");
     }
+    return true;
 }
 
-void FlexWidgetImpl::addDockSite(FlexWidget* /*self*/, DockSite* dockSite, int siteIndex, Qt::Orientation orientation, int direction, int hint)
+bool FlexWidgetImpl::addDockSite(FlexWidget* /*self*/, DockSite* dockSite, int siteIndex, Qt::Orientation orientation, int direction, int hint)
 {
+    if (siteIndex < 0 || siteIndex >= _sites.size())
+    {
+        return false;
+    }
     DockSite* mainSite = _sites[siteIndex];
     QSplitter* splitter = qobject_cast<QSplitter*>(mainSite->parentWidget());
     int width = mainSite->width();
@@ -660,15 +778,31 @@ void FlexWidgetImpl::addDockSite(FlexWidget* /*self*/, DockSite* dockSite, int s
         splitter->insertWidget(index, subSplitter);
         splitter->setSizes(sizes);
     }
+    return true;
 }
 
-void FlexWidgetImpl::addFlexWidget(FlexWidget* self, FlexWidget* widget, Qt::Orientation orientation, int direction)
+bool FlexWidgetImpl::addFlexWidget(FlexWidget* self, FlexWidget* widget, Qt::Orientation orientation, int direction)
 {
     QSplitter* widgetContainer = widget->siteContainer();
     int width = _siteContainer->width();
     int height = _siteContainer->height();
     int space = _siteContainer->handleWidth() / 2;
-    int newValue = (orientation == Qt::Horizontal ? width : height) / 2 - space;
+    int newValue = (orientation == Qt::Horizontal ? width : height) / 2;
+    if (orientation == Qt::Horizontal)
+    {
+        if (widgetContainer->width() < newValue)
+        {
+            newValue = widgetContainer->width();
+        }
+    }
+    else
+    {
+        if (widgetContainer->height() < newValue)
+        {
+            newValue = widgetContainer->height();
+        }
+    }
+    newValue -= space;
     if (_siteContainer->count() == 1)
     {
         _siteContainer->setOrientation(orientation);
@@ -748,9 +882,10 @@ void FlexWidgetImpl::addFlexWidget(FlexWidget* self, FlexWidget* widget, Qt::Ori
             _siteContainer->setObjectName("_flex_siteContainer");
         }
     }
+    return true;
 }
 
-void FlexWidgetImpl::addFlexWidget(FlexWidget* self, FlexWidget* widget, int siteIndex, Qt::Orientation orientation, int direction, int hint)
+bool FlexWidgetImpl::addFlexWidget(FlexWidget* self, FlexWidget* widget, int siteIndex, Qt::Orientation orientation, int direction, int hint)
 {
     QSplitter* widgetContainer = widget->siteContainer();
     DockSite* mainSite = _sites[siteIndex];
@@ -852,6 +987,7 @@ void FlexWidgetImpl::addFlexWidget(FlexWidget* self, FlexWidget* widget, int sit
             splitter->setSizes(sizes);
         }
     }
+    return true;
 }
 
 bool FlexWidgetImpl::isTitleBarVisible(FlexWidget* self, QRect* rect) const
@@ -995,6 +1131,7 @@ FlexWidget::FlexWidget(Flex::ViewMode viewMode, QWidget* parent, Qt::WindowFlags
     }
 
     impl->_hole = new FlexWidgetHole();
+    impl->_hole->setObjectName("_flex_hole");
 
     impl->_sideContainer->setHandleWidth(3);
     impl->_sideContainer->addWidget(impl->_hole);
@@ -1070,9 +1207,6 @@ void FlexWidget::paintEvent(QPaintEvent*)
 
     if (impl->isTitleBarVisible(this, &titleBarRect))
     {
-        impl->_helper->buttons()->show();
-        impl->_helper->extents()->show();
-
         QStyleOptionTitleBar titleOption;
         titleOption.init(this);
         titleOption.rect = titleBarRect;
@@ -1084,7 +1218,7 @@ void FlexWidget::paintEvent(QPaintEvent*)
 
         bool hasIcon = titleOption.titleBarFlags & Qt::WindowSystemMenuHint;
 
-        if (impl->_viewMode == Flex::ToolPagesView)
+        if (impl->_viewMode == Flex::ToolView || impl->_viewMode == Flex::ToolPagesView)
         {
             painter.fillRect(titleBarRect, titleOption.palette.color(QPalette::Highlight));
         }
@@ -1104,11 +1238,6 @@ void FlexWidget::paintEvent(QPaintEvent*)
         frameOption.midLineWidth = impl->_frameWidth - 1;
         painter.drawPrimitive(QStyle::PE_Frame, frameOption);
     }
-    else
-    {
-        impl->_helper->buttons()->hide();
-        impl->_helper->extents()->hide();
-    }
 }
 
 void FlexWidget::resizeEvent(QResizeEvent*)
@@ -1126,7 +1255,7 @@ void FlexWidget::resizeEvent(QResizeEvent*)
 
 #endif
 
-bool FlexWidget::nativeEvent(const QByteArray& eventType, void * message, long *result)
+bool FlexWidget::nativeEvent(const QByteArray& eventType, void* message, long* result)
 {
 #ifdef Q_OS_WIN
     MSG* msg = reinterpret_cast<MSG*>(message);
@@ -1150,6 +1279,28 @@ bool FlexWidget::nativeEvent(const QByteArray& eventType, void * message, long *
     }
     else
     {
+        if (msg->message == WM_NCHITTEST)
+        {
+            POINT pt;
+            pt.x = QT_GET_X_LPARAM(msg->lParam);
+            pt.y = QT_GET_Y_LPARAM(msg->lParam);
+
+            RECT rw;
+            GetWindowRect(msg->hwnd, &rw);
+
+            if (pt.x >= rw.left && pt.x < rw.left + 4)
+            {
+                *result = HTTRANSPARENT;
+                return true;
+            }
+
+            if (pt.x < rw.right && pt.x >= rw.right - 4)
+            {
+                *result = HTTRANSPARENT;
+                return true;
+            }
+        }
+
         return QWidget::nativeEvent(eventType, message, result);
     }
 }
@@ -1159,6 +1310,11 @@ void FlexWidget::makeSiteAutoHide(DockSite* dockSite)
     if (dockSite->dockMode() != Flex::DockInMainArea || !impl->_sites.contains(dockSite))
     {
         return;
+    }
+
+    for (int i = 0; i < dockSite->count(); i++)
+    {
+        FlexManager::instance()->snapshot(dockSite->widget(i));
     }
 
     auto mainSite = impl->_sites[0];
@@ -1211,20 +1367,18 @@ void FlexWidget::makeSiteDockShow(DockSite* dockSite)
     {
         if (dockSide->hasDockSite(dockSite) && dockSide->detachDockSite(dockSite))
         {
-            addDockSite(dockSite, Flex::M, -1);
+            FlexManager::instance()->restore(dockSite->widget(0)->objectName());
         }
     }
 
     impl->updateDockSides(this);
 }
 
-void FlexWidget::showSiteDockPull(DockSite*)
-{
-}
-
 bool FlexWidget::load(const QJsonObject& object)
 {
     clearDockSites(true);
+
+    impl->_locked = object["locked"].toBool(false);
 
     QJsonArray dockSites = object["dockSites"].toArray();
 
@@ -1263,11 +1417,12 @@ bool FlexWidget::load(const QJsonObject& object)
     return result;
 }
 
-bool FlexWidget::save(QJsonObject& object) const
+bool FlexWidget::save(QJsonObject& object)
 {
     QJsonArray dockSites;
     bool result = impl->save(this, dockSites, impl->_siteContainer);
     object["dockSites"] = dockSites;
+    object["locked"] = impl->_locked;
 
     QJsonArray dockSides;
     QJsonObject lSide;
@@ -1293,7 +1448,7 @@ bool FlexWidget::save(QJsonObject& object) const
     return result;
 }
 
-QByteArray FlexWidget::snapshot() const
+QByteArray FlexWidget::snapshot()
 {
     QJsonObject object;
 
@@ -1334,7 +1489,12 @@ bool FlexWidget::restore(const QByteArray& snapshot, const QString& identifer)
 
             QString dockWidgetName = dockWidgetObject["dockWidgetName"].toString();
 
-            DockWidget* dockWidget = FlexManager::instance()->createDockWidget(viewMode, dockSite, Flex::widgetFlags(), dockWidgetName);
+            DockWidget* dockWidget = FlexManager::instance()->dockWidget(dockWidgetName);
+
+            if (dockWidget == nullptr)
+            {
+                dockWidget = FlexManager::instance()->createDockWidget(viewMode, dockSite, Flex::widgetFlags(), dockWidgetName);
+            }
 
             dockWidget->load(dockWidgetObject);
 
@@ -1442,6 +1602,7 @@ bool FlexWidget::restore(const QByteArray& snapshot, const QString& identifer)
                 impl->_adjusting = adjusting;
 
                 impl->updateViewMode(this, viewMode(), impl->_sites.size() == 1);
+                impl->update(impl->_siteContainer);
 
                 impl->update(this);
 
@@ -1449,7 +1610,7 @@ bool FlexWidget::restore(const QByteArray& snapshot, const QString& identifer)
             }
             if (dockWidgetPath[1] == "_flex_sideContainer")
             {
-                QSplitter* parSplitter = impl->_siteContainer;
+                //QSplitter* parSplitter = impl->_siteContainer;
 
                 QJsonArray objects = flexWidgetObject["dockSides"].toArray();
 
@@ -1520,6 +1681,7 @@ bool FlexWidget::restore(const QByteArray& snapshot, const QString& identifer)
                 impl->_reserving = reserving;
 
                 impl->updateDockSides(this);
+                impl->update(impl->_siteContainer);
 
                 impl->_sides[direction]->makeCurrent(tempSite);
 
@@ -1561,7 +1723,7 @@ void FlexWidget::hideGuider(QWidget*)
     }
 }
 
-void FlexWidget::hoverGuider(QWidget*)
+void FlexWidget::overGuider(QWidget*)
 {
     if (impl->_guider)
     {
@@ -1689,6 +1851,8 @@ bool FlexWidget::addDockSite(DockSite* dockSite, Flex::DockArea area, int siteIn
 
     impl->_sites.append(dockSite);
 
+    bool result = true;
+
     switch (area)
     {
     case Flex::M:
@@ -1701,62 +1865,62 @@ bool FlexWidget::addDockSite(DockSite* dockSite, Flex::DockArea area, int siteIn
     }
     case Flex::L0:
     {
-        impl->addDockSite(this, dockSite, siteIndex, Qt::Horizontal, 0, 0);
+        result = impl->addDockSite(this, dockSite, siteIndex, Qt::Horizontal, 0, 0);
         break;
     }
     case Flex::L1:
     {
-        impl->addDockSite(this, dockSite, siteIndex, Qt::Horizontal, 0, 1);
+        result = impl->addDockSite(this, dockSite, siteIndex, Qt::Horizontal, 0, 1);
         break;
     }
     case Flex::L2:
     {
-        impl->addDockSite(this, dockSite, Qt::Horizontal, 0);
+        result = impl->addDockSite(this, dockSite, Qt::Horizontal, 0);
         break;
     }
     case Flex::T0:
     {
-        impl->addDockSite(this, dockSite, siteIndex, Qt::Vertical, 0, 0);
+        result = impl->addDockSite(this, dockSite, siteIndex, Qt::Vertical, 0, 0);
         break;
     }
     case Flex::T1:
     {
-        impl->addDockSite(this, dockSite, siteIndex, Qt::Vertical, 0, 1);
+        result = impl->addDockSite(this, dockSite, siteIndex, Qt::Vertical, 0, 1);
         break;
     }
     case Flex::T2:
     {
-        impl->addDockSite(this, dockSite, Qt::Vertical, 0);
+        result = impl->addDockSite(this, dockSite, Qt::Vertical, 0);
         break;
     }
     case Flex::R0:
     {
-        impl->addDockSite(this, dockSite, siteIndex, Qt::Horizontal, 1, 0);
+        result = impl->addDockSite(this, dockSite, siteIndex, Qt::Horizontal, 1, 0);
         break;
     }
     case Flex::R1:
     {
-        impl->addDockSite(this, dockSite, siteIndex, Qt::Horizontal, 1, 1);
+        result = impl->addDockSite(this, dockSite, siteIndex, Qt::Horizontal, 1, 1);
         break;
     }
     case Flex::R2:
     {
-        impl->addDockSite(this, dockSite, Qt::Horizontal, 1);
+        result = impl->addDockSite(this, dockSite, Qt::Horizontal, 1);
         break;
     }
     case Flex::B0:
     {
-        impl->addDockSite(this, dockSite, siteIndex, Qt::Vertical, 1, 0);
+        result = impl->addDockSite(this, dockSite, siteIndex, Qt::Vertical, 1, 0);
         break;
     }
     case Flex::B1:
     {
-        impl->addDockSite(this, dockSite, siteIndex, Qt::Vertical, 1, 1);
+        result = impl->addDockSite(this, dockSite, siteIndex, Qt::Vertical, 1, 1);
         break;
     }
     case Flex::B2:
     {
-        impl->addDockSite(this, dockSite, Qt::Vertical, 1);
+        result = impl->addDockSite(this, dockSite, Qt::Vertical, 1);
         break;
     }
     default:
@@ -1768,20 +1932,26 @@ bool FlexWidget::addDockSite(DockSite* dockSite, Flex::DockArea area, int siteIn
     impl->_adjusting = false;
 
     impl->updateViewMode(this, siteViewMode, first);
+    impl->update(impl->_siteContainer);
 
     if (dockSite)
     {
         dockSite->show(); dockSite->setFocus();
     }
 
-    return true;
+    return result;
 }
 
 bool FlexWidget::addDockWidget(DockWidget* widget, Flex::DockArea area, int siteIndex)
 {
-    if (area != Flex::M || siteIndex < 0)
+    if (area != Flex::M || siteIndex == -1)
     {
         return addDockSite(new DockSite(widget), area, siteIndex);
+    }
+
+    if (siteIndex < 0 || siteIndex >= impl->_sites.size())
+    {
+        return false;
     }
 
     bool result = impl->_sites[siteIndex]->addWidget(widget);
@@ -1800,7 +1970,10 @@ bool FlexWidget::addDockWidget(DockWidget* widget, Flex::DockArea area, int site
 
 bool FlexWidget::addFlexWidget(FlexWidget* widget, Flex::DockArea area, int siteIndex)
 {
-    Q_ASSERT(siteIndex < impl->_sites.size());
+    if (siteIndex >= impl->_sites.size())
+    {
+        return false;
+    }
 
     auto flexViewMode = widget->viewMode();
 
@@ -1919,6 +2092,7 @@ bool FlexWidget::addFlexWidget(FlexWidget* widget, Flex::DockArea area, int site
         }
 
         impl->updateDockSides(this);
+        impl->update(impl->_siteContainer);
 
         impl->_adjusting = false;
     }
@@ -1938,6 +2112,16 @@ bool FlexWidget::addFlexWidget(FlexWidget* widget, Flex::DockArea area, int site
     }
 
     return true;
+}
+
+bool FlexWidget::addDockWidget(DockWidget* widget)
+{
+    return addDockWidget(widget, Flex::M, findSiteIndex());
+}
+
+bool FlexWidget::addFlexWidget(FlexWidget* widget)
+{
+    return addFlexWidget(widget, Flex::M, findSiteIndex());
 }
 
 bool FlexWidget::removeDockSite(DockSite* dockSite)
@@ -1993,6 +2177,7 @@ bool FlexWidget::removeDockSite(DockSite* dockSite)
     impl->_adjusting = adjusting;
 
     impl->updateViewMode(this);
+    impl->update(impl->_siteContainer);
 
     return result;
 }
@@ -2056,13 +2241,37 @@ void FlexWidget::clearDockSites(bool all)
     }
 
     impl->updateViewMode(this);
-
     impl->updateDockSides(this);
+    impl->update(impl->_siteContainer);
+
 }
 
 bool FlexWidget::isActive() const
 {
     return isActiveWindow();
+}
+
+int FlexWidget::findSiteIndex(Flex::ViewMode viewMode, int which) const
+{
+    if (impl->_sites.empty())
+    {
+        return -1;
+    }
+
+    int number = -1;
+
+    for (int i = 0; i < impl->_sites.size(); i++)
+    {
+        if (impl->_sites[i]->viewMode() == viewMode)
+        {
+            if (++number == which)
+            {
+                return i;
+            }
+        }
+    }
+
+    return -1;
 }
 
 Flex::ViewMode FlexWidget::viewMode() const
@@ -2202,6 +2411,37 @@ bool FlexWidget::isAdjusting() const
 bool FlexWidget::isFloating() const
 {
     return isTopLevel();
+}
+
+bool FlexWidget::isLocked() const
+{
+    return impl->_locked;
+}
+
+void FlexWidget::lockit()
+{
+    impl->_locked = true;
+    for (auto dockSite : impl->_sites)
+    {
+        dockSite->lockit();
+    }
+    for (auto dockSide : impl->_sides)
+    {
+        dockSide->lockit();
+    }
+}
+
+void FlexWidget::unlock()
+{
+    impl->_locked = false;
+    for (auto dockSite : impl->_sites)
+    {
+        dockSite->unlock();
+    }
+    for (auto dockSide : impl->_sides)
+    {
+        dockSide->unlock();
+    }
 }
 
 void FlexWidget::on_titleBar_buttonClicked(Flex::Button button, bool* accepted)

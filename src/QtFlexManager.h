@@ -166,6 +166,10 @@ public:
     static int Update;
 };
 
+Q_DECLARE_METATYPE(Flex::DockArea)
+Q_DECLARE_METATYPE(Flex::DockMode)
+Q_DECLARE_METATYPE(Flex::ViewMode)
+
 Q_DECLARE_OPERATORS_FOR_FLAGS(Flex::Features)
 
 class FlexManagerImpl;
@@ -178,18 +182,26 @@ protected:
     ~FlexManager();
 
 Q_SIGNALS:
-    void guiderHover(FlexWidget*, QWidget*);
+    void guiderOver(FlexWidget*, QWidget*);
     void guiderShow(FlexWidget*, QWidget*);
     void guiderHide(FlexWidget*, QWidget*);
     void guiderDrop(FlexWidget*, DockWidget*);
     void guiderDrop(FlexWidget*, FlexWidget*);
 
 Q_SIGNALS:
-    void dockSiteActivated(DockSite*);
     void flexWidgetCreated(FlexWidget*);
     void dockWidgetCreated(DockWidget*);
     void flexWidgetDestroying(FlexWidget*);
     void dockWidgetDestroying(DockWidget*);
+    void flexWidgetActivated(FlexWidget*);
+    void dockWidgetActivated(DockWidget*);
+    void dockSiteActivated(DockSite*);
+    void dockSitePullMenuRequested(const QPoint&, DockSite*);
+    void dockSiteItemMenuRequested(const QPoint&, DockSite*);
+
+Q_SIGNALS:
+    void loadFinished();
+    void saveFinished();
 
 public:
     FlexWidget* createFlexWidget(Flex::ViewMode viewMode, QWidget* parent, Qt::WindowFlags flags = Flex::widgetFlags(), const QString& flexWidgetName = QString());
@@ -218,16 +230,22 @@ public:
     static FlexManager* instance();
 
 public:
+    bool isLocked() const;
+    void lockit();
+    void unlock();
+
+public:
     QIcon icon(Flex::Button button);
 
 public:
+    void clear();
     void close();
 
 public:
     bool load(const QByteArray& content, const QMap<QString, QWidget*>& parents);
 
 public:
-    QByteArray save() const;
+    QByteArray save();
 
 private:
     bool eventFilter(QObject*, QEvent*);
@@ -240,7 +258,7 @@ private Q_SLOTS:
     void on_flexWidget_destroyed(QObject* widget);
     void on_flexWidget_guiderShow(FlexWidget*, QWidget*);
     void on_flexWidget_guiderHide(FlexWidget*, QWidget*);
-    void on_flexWidget_guiderHover(FlexWidget*, QWidget*);
+    void on_flexWidget_guiderOver(FlexWidget*, QWidget*);
     void on_flexWidget_guiderDrop(FlexWidget*, DockWidget*);
     void on_flexWidget_guiderDrop(FlexWidget*, FlexWidget*);
     void on_flexWidget_enterMove(QObject*);

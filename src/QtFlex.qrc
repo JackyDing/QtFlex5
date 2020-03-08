@@ -3,5 +3,6 @@
         <file>Resources/guiders.png</file>
         <file>Resources/buttons.png</file>
         <file>Resources/extents.png</file>
+        <file>Resources/shadows.png</file>
     </qresource>
 </RCC>

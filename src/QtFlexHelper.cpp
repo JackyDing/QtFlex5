@@ -5,6 +5,7 @@
 #include <QtGui/QResizeEvent>
 #include <QtGui/QPainter>
 #include <QtGui/QWindow>
+#include <QtWidgets/QStyleOption>
 #include <QtWidgets/QStylePainter>
 #include <QtWidgets/QToolButton>
 #include <QtWidgets/QHBoxLayout>
@@ -20,6 +21,74 @@
 #endif
 
 #include <private/qwidgetresizehandler_p.h>
+
+class FlexShadow;
+class FlexButton;
+class FlexButtons;
+class FlexExtents;
+
+class FlexHelperImpl
+{
+public:
+    FlexHelperImpl()
+    {
+    }
+
+public:
+    bool _moving = false;
+    bool _active = false;
+
+    int _timer = -1;
+
+    QWidget* _frame = nullptr;
+
+    Qt::WindowFlags _windowFlags;
+
+    FlexShadow* _shadows[4];
+    FlexButtons* _buttons;
+    FlexExtents* _extents;
+
+    bool _hasMoving;
+    bool _hasEnterMove;
+    bool _hasLeaveMove;
+
+    int _titleBarHeight = 27;
+};
+
+class FlexShadow : public QWidget
+{
+public:
+    FlexShadow(FlexHelperImpl* helper, int side) : QWidget(helper->_frame, (Qt::WindowFlags)(Qt::Tool | Qt::FramelessWindowHint)), _helper(helper)
+    {
+        setAttribute(Qt::WA_NoBackground);
+        setAttribute(Qt::WA_NoSystemBackground);
+        setAttribute(Qt::WA_ShowWithoutActivating);
+        setAttribute(Qt::WA_TranslucentBackground);
+        setProperty("Grow", side);
+    }
+
+    ~FlexShadow()
+    {
+    }
+
+protected:
+    void paintEvent(QPaintEvent*)
+    {
+        if (!_helper->_frame->isMaximized() && !_helper->_frame->isMinimized() && !_helper->_frame->isFullScreen())
+        {
+            QStylePainter painter(this);
+            QStyleOption option;
+            if (_helper->_active)
+            {
+                option.state |= QStyle::State_Active;
+            }
+            painter.drawPrimitive(QStyle::PE_FrameWindow, option);
+        }
+    }
+
+protected:
+    FlexHelperImpl* _helper;
+};
 
 class FlexButton : public QToolButton
 {
@@ -170,16 +239,6 @@ void FlexButton::paintEvent(QPaintEvent*)
 
     QStylePainter painter(this);
 
-    QIcon icon = FlexManager::instance()->icon(_button);
-
-    painter.setPen(QColor("#E5C365"));
-    painter.setBrush(QColor(_down ? "#FFE8A6" : "#FFFCF4"));
-
-    if (_over)
-    {
-        painter.drawRect(geom.adjusted(0, 0, -1, -1));
-    }
-
     QIcon::Mode mode = QIcon::Normal;
 
     Flex::ViewMode viewMode = (Flex::ViewMode)widget->property("viewMode").value<int>();
@@ -189,26 +248,29 @@ void FlexButton::paintEvent(QPaintEvent*)
         mode = active ? QIcon::Active : QIcon::Normal;
     }
 
-    icon.paint(&painter, geom, Qt::AlignCenter, mode, _over ? QIcon::On : QIcon::Off);
-}
+    QIcon icon = FlexManager::instance()->icon(_button);
 
-class FlexHelperImpl
-{
-public:
-    FlexHelperImpl()
+    if (_over)
     {
+        if (viewMode == Flex::ToolView || viewMode == Flex::ToolPagesView)
+        {
+            painter.setPen(QColor(_down ? "#0E6198" : "#52B0EF"));
+            painter.setBrush(QColor(_down ? "#0E6198" : "#52B0EF"));
+        }
+        else
+        {
+            painter.setPen(QColor(_down ? "#007ACC" : "#3F3F41"));
+            painter.setBrush(QColor(_down ? "#007ACC" : "#3F3F41"));
+        }
     }
 
-public:
-    bool _moving = false;
+    if (_over)
+    {
+        painter.drawRect(geom.adjusted(0, 0, -1, -1));
+    }
 
-    Qt::WindowFlags _windowFlags;
-
-    FlexButtons* _buttons;
-    FlexExtents* _extents;
-
-    int _titleBarHeight = 27;
-};
+    icon.paint(&painter, geom, Qt::AlignCenter, mode, _over ? QIcon::On : QIcon::Off);
+}
 
 #ifdef Q_OS_WIN
 
@@ -218,10 +280,10 @@ typedef struct _MARGINS
     int cxRightWidth;
     int cyTopHeight;
     int cyBottomHeight;
-} MARGINS, *PMARGINS;
+} MARGINS, * PMARGINS;
 
-typedef HRESULT(WINAPI *ApiDwmIsCompositionEnabled)(BOOL* pfEnabled);
-typedef HRESULT(WINAPI *ApiDwmExtendFrameIntoClientArea)(HWND, PMARGINS);
+typedef HRESULT(WINAPI* ApiDwmIsCompositionEnabled)(BOOL* pfEnabled);
+typedef HRESULT(WINAPI* ApiDwmExtendFrameIntoClientArea)(HWND, PMARGINS);
 
 static ApiDwmIsCompositionEnabled PtrDwmIsCompositionEnabled = reinterpret_cast<ApiDwmIsCompositionEnabled>(QLibrary::resolve("dwmapi.dll", "DwmIsCompositionEnabled"));
 static ApiDwmExtendFrameIntoClientArea PtrDwmExtendFrameIntoClientArea = reinterpret_cast<ApiDwmExtendFrameIntoClientArea>(QLibrary::resolve("dwmapi.dll", "DwmExtendFrameIntoClientArea"));
@@ -366,7 +428,6 @@ void FlexHelperImplWin::updateFrame(HWND hwnd)
                 if (PtrDwmExtendFrameIntoClientArea(hwnd, &margins) == S_OK)
                 {
                 }
-
             }
             else
             {
@@ -705,6 +766,26 @@ bool FlexHelperImplMac::eventFilter(QObject* obj, QEvent* evt)
 FlexHelper::FlexHelper(QWidget* parent) : QObject(parent), impl(new FlexHelperImplWin)
 {
     auto d = static_cast<FlexHelperImplWin*>(impl.data());
+
+    d->_frame = parent;
+
+    d->_shadows[0] = nullptr;
+    d->_shadows[1] = nullptr;
+    d->_shadows[2] = nullptr;
+    d->_shadows[3] = nullptr;
+
+    d->_hasMoving = parent->metaObject()->indexOfSignal("moving(QObject*)") != -1;
+    d->_hasEnterMove = parent->metaObject()->indexOfSignal("enterMove(QObject*)") != -1;
+    d->_hasLeaveMove = parent->metaObject()->indexOfSignal("leaveMove(QObject*)") != -1;
+
+    if (parent->isWindow())
+    {
+        d->_shadows[0] = new FlexShadow(d, 0);
+        d->_shadows[1] = new FlexShadow(d, 1);
+        d->_shadows[2] = new FlexShadow(d, 2);
+        d->_shadows[3] = new FlexShadow(d, 3);
+    }
+
     d->_buttons = new FlexButtons(parent, parent);
     d->_extents = new FlexExtents(parent, parent);
     connect(d->_extents->_dockPullButton, SIGNAL(clicked()), SLOT(on_button_clicked()));
@@ -794,11 +875,7 @@ void FlexHelper::layout(int w)
 
     if (impl->_buttons->maxButton()->button() == Flex::Restore)
     {
-        aw = 0;
-    }
-
-    if (impl->_buttons->maxButton()->button() == Flex::Restore)
-    {
+        aw = 16;
     }
 
     auto bw = buttonsSize.width();
@@ -844,9 +921,21 @@ bool FlexHelper::eventFilter(QObject* obj, QEvent* evt)
         d->updateStyle(reinterpret_cast<HWND>(hwnd));
 #endif
     }
+    else if (evt->type() == QEvent::Timer)
+    {
+        if (static_cast<QTimerEvent*>(evt)->timerId() == d->_timer)
+        {
+            if (d->_shadows[0]) d->_shadows[0]->setVisible(true);
+            if (d->_shadows[1]) d->_shadows[1]->setVisible(true);
+            if (d->_shadows[2]) d->_shadows[2]->setVisible(true);
+            if (d->_shadows[3]) d->_shadows[3]->setVisible(true);
+            d->_frame->killTimer(d->_timer);
+            d->_timer = 0;
+        }
+    }
     else if (evt->type() == QEvent::Move)
     {
-        if (impl->_moving)
+        if (impl->_moving && impl->_hasMoving)
         {
             QMetaObject::invokeMethod(obj, "moving", Q_ARG(QObject*, obj));
         }
@@ -868,7 +957,7 @@ LRESULT WINAPI FlexHelperImplWin::keyEvent(int nCode, WPARAM wParam, LPARAM lPar
     {
         return CallNextHookEx(FlexHelperImplWin::_hook, nCode, wParam, lParam);
     }
- 
+
     if (wParam == VK_CONTROL && DockGuider::instance())
     {
         if (GetAsyncKeyState(VK_CONTROL) & 0x8000)
@@ -921,7 +1010,7 @@ bool FlexHelper::nativeEvent(const QByteArray&, void* event, long* result)
         if (d->_moving)
         {
             d->_moving = true;
-            QMetaObject::invokeMethod(object, "enterMove", Q_ARG(QObject*, object));
+            if (d->_hasEnterMove) QMetaObject::invokeMethod(object, "enterMove", Q_ARG(QObject*, object));
             if (FlexHelperImplWin::_hook == nullptr)
             {
                 FlexHelperImplWin::_hook = SetWindowsHookEx(WH_KEYBOARD, FlexHelperImplWin::keyEvent, NULL, GetCurrentThreadId());
@@ -942,7 +1031,7 @@ bool FlexHelper::nativeEvent(const QByteArray&, void* event, long* result)
                 UnhookWindowsHookEx(FlexHelperImplWin::_hook);
                 FlexHelperImplWin::_hook = nullptr;
             }
-            QMetaObject::invokeMethod(object, "leaveMove", Q_ARG(QObject*, object));
+            if (d->_hasLeaveMove) QMetaObject::invokeMethod(object, "leaveMove", Q_ARG(QObject*, object));
         }
 #if QT_VERSION <= QT_VERSION_CHECK(5, 7, 1)
         QApplication::sendPostedEvents(nullptr, QEvent::DeferredDelete);
@@ -952,7 +1041,7 @@ bool FlexHelper::nativeEvent(const QByteArray&, void* event, long* result)
     case WM_DWMCOMPOSITIONCHANGED:
     {
         BOOL dwmEnabled = TRUE;
-        dwmEnabled = (d->_dwmAllowed && PtrDwmIsCompositionEnabled && PtrDwmIsCompositionEnabled(&dwmEnabled) == S_OK & dwmEnabled);
+        dwmEnabled = (d->_dwmAllowed && PtrDwmIsCompositionEnabled && PtrDwmIsCompositionEnabled(&dwmEnabled) == S_OK && dwmEnabled);
         if (d->_dwmEnabled != dwmEnabled)
         {
             d->_dwmEnabled = dwmEnabled;
@@ -993,11 +1082,15 @@ bool FlexHelper::nativeEvent(const QByteArray&, void* event, long* result)
 
         RECT rc;
         GetWindowRect(hwnd, &rc);
+        int x = rc.left;
+        int y = rc.top;
         int w = rc.right - rc.left;
         int h = rc.bottom - rc.top;
 
-        //int w = LOWORD(lParam);
-        //int h = HIWORD(lParam);
+        if (d->_shadows[0]) d->_shadows[0]->setGeometry(x - 8, y - 0, 8, h);
+        if (d->_shadows[1]) d->_shadows[1]->setGeometry(x - 8, y - 8, w + 16, 8);
+        if (d->_shadows[2]) d->_shadows[2]->setGeometry(x + w, y, 8, h);
+        if (d->_shadows[3]) d->_shadows[3]->setGeometry(x - 8, y + h, w + 16, 8);
 
         if (wParam == SIZE_MINIMIZED)
         {
@@ -1045,6 +1138,55 @@ bool FlexHelper::nativeEvent(const QByteArray&, void* event, long* result)
 
         break;
     }
+    case WM_MOVE:
+    {
+        RECT rc;
+        ::GetWindowRect(msg->hwnd, &rc);
+
+        int x = rc.left;
+        int y = rc.top;
+        int w = rc.right - rc.left;
+        int h = rc.bottom - rc.top;
+
+        if (d->_shadows[0]) d->_shadows[0]->setGeometry(x - 8, y - 0, 8, h);
+        if (d->_shadows[1]) d->_shadows[1]->setGeometry(x - 8, y - 8, w + 16, 8);
+        if (d->_shadows[2]) d->_shadows[2]->setGeometry(x + w, y, 8, h);
+        if (d->_shadows[3]) d->_shadows[3]->setGeometry(x - 8, y + h, w + 16, 8);
+
+        return false;
+    }
+    case WM_ACTIVATEAPP:
+    {
+        d->_active = (bool)msg->wParam;
+        return false;
+    }
+    case WM_ACTIVATE:
+    {
+        d->_active = msg->wParam != 0;
+
+        if (d->_shadows[0]) d->_shadows[0]->setVisible(false);
+        if (d->_shadows[1]) d->_shadows[1]->setVisible(false);
+        if (d->_shadows[2]) d->_shadows[2]->setVisible(false);
+        if (d->_shadows[3]) d->_shadows[3]->setVisible(false);
+
+        d->_shadows[0]->update();
+        d->_shadows[1]->update();
+        d->_shadows[2]->update();
+        d->_shadows[3]->update();
+
+        if (d->_timer > 0)
+        {
+            d->_frame->killTimer(d->_timer);
+        }
+
+        d->_timer = 0;
+
+        if (msg->wParam != 0)
+        {
+            d->_timer = d->_frame->startTimer(250);
+        }
+        return false;
+    }
     case WM_STYLECHANGED:
     {
         RECT rc;
@@ -1085,8 +1227,6 @@ bool FlexHelper::nativeEvent(const QByteArray&, void* event, long* result)
         int yMin = 40;
         int xMin = 3 * yMin;
         xMin += GetSystemMetrics(SM_CYSIZE) + 2 * GetSystemMetrics(SM_CXEDGE);
-        //lpmmi->ptMaxPosition.x = -8;
-        //lpmmi->ptMaxPosition.y = -8;
         lpmmi->ptMinTrackSize.x = std::max(lpmmi->ptMinTrackSize.x, (LONG)xMin);
         lpmmi->ptMinTrackSize.y = std::max(lpmmi->ptMinTrackSize.y, (LONG)yMin);
         //lpmmi->ptMaxTrackSize.x -= 16;
@@ -1153,7 +1293,14 @@ bool FlexHelper::nativeEvent(const QByteArray&, void* event, long* result)
 
             if (pt.y >= rw.top + 4 && pt.y < rw.top + d->_titleBarHeight && pt.x >= rw.left + 4 && pt.x < rw.right - 4)
             {
-                *result = HTCAPTION; return true;
+                if (GetAsyncKeyState(VK_LBUTTON))
+                {
+                    *result = HTCAPTION; return true;
+                }
+                else
+                {
+                    *result = HTCLIENT; return true;
+                }
             }
 
             int row = 1;

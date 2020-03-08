@@ -10,6 +10,8 @@ class QT_FLEX_API DockWidget : public QWidget
     Q_OBJECT
     Q_PROPERTY(bool active READ isActive)
     Q_PROPERTY(Flex::ViewMode viewMode READ viewMode)
+    Q_PROPERTY(QString majorTitle READ majorTitle WRITE setMajorTitle)
+    Q_PROPERTY(QString minorTitle READ minorTitle WRITE setMinorTitle)
 private:
     DockWidget(Flex::ViewMode viewMode, QWidget* parent, Qt::WindowFlags flags);
     ~DockWidget();
@@ -23,6 +25,12 @@ public:
     void setDockFeatures(Flex::Features features);
     Flex::Features siteFeatures() const;
     void setSiteFeatures(Flex::Features features);
+
+public:
+    QString majorTitle() const;
+    void setMajorTitle(const QString& title);
+    QString minorTitle() const;
+    void setMinorTitle(const QString& title);
 
 public:
     DockSite* dockSite() const;
@@ -44,6 +52,9 @@ public:
 
 public:
     void setWidget(QWidget* widget);
+
+public:
+    void setSizeHint(const QSize& size);
 
 public:
     QSize sizeHint() const;
@@ -68,7 +79,7 @@ public:
     bool load(const QJsonObject& object);
 
 public:
-    bool save(QJsonObject& object) const;
+    bool save(QJsonObject& object);
 
 public:
     QString identifier();

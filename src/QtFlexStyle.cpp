@@ -4,13 +4,17 @@
 #include "QtDockSite.h"
 #include <QtGui/QPainter>
 #include <QtWidgets/QStyleOption>
+#include <qdrawutil.h>
 
 class FlexStyleImpl
 {
 public:
-    FlexStyleImpl()
+    FlexStyleImpl() : soImage(":/Resources/shadows.png")
     {
     }
+
+public:
+    QPixmap soImage;
 };
 
 FlexStyle::FlexStyle(QStyle* style) : QProxyStyle(style), impl(new FlexStyleImpl)
@@ -20,26 +24,45 @@ FlexStyle::FlexStyle(QStyle* style) : QProxyStyle(style), impl(new FlexStyleImpl
 
 FlexStyle::~FlexStyle()
 {
-
 }
 
-void FlexStyle::drawPrimitive(PrimitiveElement pe, const QStyleOption *opt, QPainter *p, const QWidget *w) const
+void FlexStyle::drawPrimitive(PrimitiveElement pe, const QStyleOption* opt, QPainter* p, const QWidget* w) const
 {
     switch (pe)
     {
-    case QStyle::PE_IndicatorTabClose:
+    case PE_IndicatorTabClose:
         if (!w || !w->parent()->property("Flex").isValid())
         {
             break;
         }
-        else
+        if (w != nullptr)
         {
             bool active = w->parentWidget()->property("active").toBool();
-            bool highlight = (opt->state & State_Selected) && active;
+            bool highlight = opt->state & State_Selected;
             bool mouseover = opt->state & State_MouseOver;
+            bool mousedown = opt->state & QStyle::State_Sunken;
 
-            p->setPen(QColor("#E5C365"));
-            p->setBrush(QColor("#FFFCF4"));
+            QColor color;
+
+            if (mousedown)
+            {
+                color = QColor("#0E6198");
+            }
+            else if (highlight)
+            {
+                color = QColor(active ? "#1C97EA" : "#555555");
+            }
+            else if (mouseover)
+            {
+                color = QColor(active ? "#52B0EF" : "#52B0EF");
+            }
+            else
+            {
+                color = QColor(active ? "#52B0EF" : "#555555");
+            }
+
+            p->setPen(color);
+            p->setBrush(color);
 
             if (mouseover)
             {
@@ -49,35 +72,38 @@ void FlexStyle::drawPrimitive(PrimitiveElement pe, const QStyleOption *opt, QPai
             FlexManager::instance()->icon(Flex::Close).paint(p, opt->rect, Qt::AlignCenter, (mouseover || highlight) ? QIcon::Active : QIcon::Normal, mouseover ? QIcon::On : QIcon::Off);
         }
         return;
-    case QStyle::PE_Frame:
+    case PE_Frame:
         if (!w || !w->property("Flex").isValid())
         {
             break;
         }
         if (auto tmp = qstyleoption_cast<const QStyleOptionFrame*>(opt))
         {
-            p->setPen(QColor("#8692B1"));
-            p->drawRect(opt->rect.adjusted(0, 0, -1, -1));
-            if (tmp->midLineWidth >= 2)
+            if (w->isWindow())
             {
-                p->setPen(tmp->palette.color(QPalette::Highlight));
-                p->drawRect(opt->rect.adjusted(1, 1, -2, -2));
-                p->drawRect(opt->rect.adjusted(2, 2, -3, -3));
+                p->setPen(QColor(w->property("active").toBool() ? "#007ACC" : "#3F3F46"));
             }
+            else
+            {
+                p->setPen(QColor("#3F3F46"));
+            }
+
+            p->drawRect(opt->rect.adjusted(0, 0, -1, -1));
+
             return;
         }
-        break;
+        return;
     case PE_FrameTabBarBase:
         if (!w || !w->property("Flex").isValid())
         {
             break;
         }
-        if (auto tbb = qstyleoption_cast<const QStyleOptionTabBarBaseV2*>(opt))
+        if (auto tbb = qstyleoption_cast<const QStyleOptionTabBarBase*>(opt))
         {
             auto active = w->property("active").toBool();
             auto colour = tbb->palette.color(active ? QPalette::Active : QPalette::Inactive, QPalette::Highlight);
             p->save();
-            switch (tbb->shape) 
+            switch (tbb->shape)
             {
             case QTabBar::RoundedNorth:
                 p->setPen(QPen(colour, 1));
@@ -85,7 +111,7 @@ void FlexStyle::drawPrimitive(PrimitiveElement pe, const QStyleOption *opt, QPai
                 p->drawLine(tbb->rect.bottomLeft() + QPoint(0, +0), tbb->rect.bottomRight() + QPoint(0, +0));
                 break;
             case QTabBar::RoundedSouth:
-                p->setPen(QPen(QColor("#8692B1"), 1));
+                p->setPen(QPen(QColor("#3F3F46"), 1));
                 p->drawLine(tbb->rect.left(), tbb->rect.top() + 0, tbb->rect.right(), tbb->rect.top() + 0);
                 break;
             default:
@@ -94,13 +120,44 @@ void FlexStyle::drawPrimitive(PrimitiveElement pe, const QStyleOption *opt, QPai
             p->restore();
         }
         return;
+    case PE_FrameWindow:
+        if (!w || !w->property("Grow").isValid())
+        {
+            break;
+        }
+        if (opt != nullptr)
+        {
+            QRect rect = w->rect();
+
+            int offset = opt->state & State_Active ? 16 : 0;
+
+            p->fillRect(rect, Qt::transparent);
+
+            switch (w->property("Grow").toInt())
+            {
+            case 0:
+                qDrawBorderPixmap(p, rect, QMargins(0, 5, 0, 5), impl->soImage, QRect(0, offset, 8, 16), QMargins(0, 5, 0, 5));
+                break;
+            case 1:
+                qDrawBorderPixmap(p, rect, QMargins(13, 0, 13, 0), impl->soImage, QRect(8, offset, 31, 8), QMargins(13, 0, 13, 0));
+                break;
+            case 2:
+                qDrawBorderPixmap(p, rect, QMargins(0, 5, 0, 5), impl->soImage, QRect(39, offset, 8, 16), QMargins(0, 5, 0, 5));
+                break;
+            case 3:
+                qDrawBorderPixmap(p, rect, QMargins(13, 0, 13, 0), impl->soImage, QRect(8, offset + 8, 31, 8), QMargins(13, 0, 13, 0));
+                break;
+            }
+            return;
+        }
+        return;
     default:
         break;
     }
     QProxyStyle::drawPrimitive(pe, opt, p, w);
 }
 
-void FlexStyle::drawControl(ControlElement ce, const QStyleOption *opt, QPainter *p, const QWidget *w) const
+void FlexStyle::drawControl(ControlElement ce, const QStyleOption* opt, QPainter* p, const QWidget* w) const
 {
     switch (ce)
     {
@@ -109,7 +166,7 @@ void FlexStyle::drawControl(ControlElement ce, const QStyleOption *opt, QPainter
         {
             break;
         }
-        if (auto tab = qstyleoption_cast<const QStyleOptionTabV3*>(opt))
+        if (auto tab = qstyleoption_cast<const QStyleOptionTab*>(opt))
         {
             bool highlight = tab->state & State_Selected;
             bool mouseover = tab->state & State_MouseOver;
@@ -129,7 +186,7 @@ void FlexStyle::drawControl(ControlElement ce, const QStyleOption *opt, QPainter
                 break;
             }
 
-            auto bgColor = tab->palette.color(QPalette::Inactive, w->backgroundRole());
+            QColor bgColor;
 
             if (highlight)
             {
@@ -139,19 +196,23 @@ void FlexStyle::drawControl(ControlElement ce, const QStyleOption *opt, QPainter
             {
                 bgColor = tab->palette.color(QPalette::Active, w->backgroundRole());
             }
+            else
+            {
+                bgColor = tab->palette.color(QPalette::Inactive, w->backgroundRole());
+            }
 
             p->setBrush(bgColor);
 
-            p->setPen(tab->shape == QTabBar::RoundedSouth && highlight ? QColor("#8692B1") : bgColor);
+            p->setPen(tab->shape == QTabBar::RoundedSouth && highlight ? QColor("#3F3F46") : bgColor);
 
             p->drawRect(rect);
 
-            if (tab->shape == QTabBar::RoundedSouth && !highlight)
-            {
-                p->setPen(QColor("#4B5C74"));
-                p->drawLine(tab->rect.bottomLeft() - QPoint(0, 0), tab->rect.bottomRight() - QPoint(0, 0));
-                p->drawLine(tab->rect.bottomLeft() - QPoint(0, 1), tab->rect.bottomRight() - QPoint(0, 1));
-            }
+            //if (tab->shape == QTabBar::RoundedSouth && !highlight)
+            //{
+            //    p->setPen(QColor("#4B5C74"));
+            //    p->drawLine(tab->rect.bottomLeft() - QPoint(0, 0), tab->rect.bottomRight() - QPoint(0, 0));
+            //    p->drawLine(tab->rect.bottomLeft() - QPoint(0, 1), tab->rect.bottomRight() - QPoint(0, 1));
+            //}
 
             return;
         }
@@ -161,7 +222,7 @@ void FlexStyle::drawControl(ControlElement ce, const QStyleOption *opt, QPainter
         {
             break;
         }
-        if (auto tab = qstyleoption_cast<const QStyleOptionTabV3*>(opt))
+        if (auto tab = qstyleoption_cast<const QStyleOptionTab*>(opt))
         {
             bool active = w->property("active").toBool();
             bool highlight = tab->state & State_Selected;
@@ -174,7 +235,7 @@ void FlexStyle::drawControl(ControlElement ce, const QStyleOption *opt, QPainter
             {
                 palette.setCurrentColorGroup(highlight ? QPalette::Active : QPalette::Inactive);
             }
-            QStyleOptionTabV3 tmp = *tab;
+            QStyleOptionTab tmp = *tab;
             tmp.palette = palette;
 #ifdef Q_OS_MAC
             QCommonStyle::drawControl(ce, &tmp, p, w);
@@ -189,7 +250,7 @@ void FlexStyle::drawControl(ControlElement ce, const QStyleOption *opt, QPainter
         {
             break;
         }
-        else
+        if (w != nullptr)
         {
             return;
         }
@@ -200,7 +261,7 @@ void FlexStyle::drawControl(ControlElement ce, const QStyleOption *opt, QPainter
     QProxyStyle::drawControl(ce, opt, p, w);
 }
 
-int FlexStyle::pixelMetric(PixelMetric pm, const QStyleOption *opt, const QWidget *w) const
+int FlexStyle::pixelMetric(PixelMetric pm, const QStyleOption* opt, const QWidget* w) const
 {
     switch (pm)
     {
@@ -226,9 +287,4 @@ int FlexStyle::pixelMetric(PixelMetric pm, const QStyleOption *opt, const QWidge
         break;
     }
     return QProxyStyle::pixelMetric(pm, opt, w);
-}
-
-QRect FlexStyle::subElementRect(SubElement se, const QStyleOption *opt, const QWidget *w) const
-{
-    return QProxyStyle::subElementRect(se, opt, w);
 }

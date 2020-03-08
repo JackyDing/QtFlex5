@@ -222,12 +222,12 @@ void DockGuider::paintEvent(QPaintEvent*)
 
     QPainter painter(this);
 
-    painter.setBrush(QBrush(QColor("#424242")));
-    painter.setPen(QPen(QColor("#424242")));
+    painter.setBrush(QBrush(QColor("#1F1F20")));
+    painter.setPen(QPen(QColor("#333337")));
 
-    painter.setOpacity(0.75);
+    painter.setOpacity(0.50);
 
-    QColor background("#CCCCCC");
+    QColor background("#0B4178");
 
     switch (impl->_area)
     {
@@ -241,7 +241,7 @@ void DockGuider::paintEvent(QPaintEvent*)
         painter.fillRect(sx, sy, (ww < sw / 2) ? ww : sw / 2, sh, background);
         break;
     case Flex::L2:
-        painter.fillRect(x, y, w / 2, h, background);
+        painter.fillRect(x, y, (ww < w / 2) ? ww : w / 2, h, background);
         break;
     case Flex::T0:
         painter.fillRect(sx, sy, sw, sh / 2, background);
@@ -250,7 +250,7 @@ void DockGuider::paintEvent(QPaintEvent*)
         painter.fillRect(sx, sy, sw, (wh < sh / 2) ? wh : sh / 2, background);
         break;
     case Flex::T2:
-        painter.fillRect(x, y, w, h / 2, background);
+        painter.fillRect(x, y, w, (wh < h / 2) ? wh : h / 2, background);
         break;
     case Flex::R0:
         painter.fillRect(sx + sw / 2, sy, sw / 2, sh, background);
@@ -259,7 +259,7 @@ void DockGuider::paintEvent(QPaintEvent*)
         painter.fillRect(sx + ((ww < sw / 2) ? (sw - ww) : sw / 2), sy, (ww < sw / 2) ? ww : sw / 2, sh, background);
         break;
     case Flex::R2:
-        painter.fillRect(x + w / 2, y, w / 2, h, background);
+        painter.fillRect(x + ((ww < w / 2) ? (w - ww) : w / 2), y, (ww < w / 2) ? ww : w / 2, h, background);
         break;
     case Flex::B0:
         painter.fillRect(sx, sy + sh / 2, sw, sh / 2, background);
@@ -268,7 +268,7 @@ void DockGuider::paintEvent(QPaintEvent*)
         painter.fillRect(sx, sy + ((wh < sh / 2) ? (sh - wh) : sh / 2), sw, (wh < sh / 2) ? wh : sh / 2, background);
         break;
     case Flex::B2:
-        painter.fillRect(x, y + h / 2, w, h / 2, background);
+        painter.fillRect(x, y + ((wh < h / 2) ? (h - wh) : h / 2), w, (wh < h / 2) ? wh : h / 2, background);
         break;
     default:
         break;
@@ -283,7 +283,7 @@ void DockGuider::paintEvent(QPaintEvent*)
     }
     
     painter.translate(offset);
-    painter.setBrush(QBrush(QColor("#FFFFFF")));
+    painter.setBrush(QBrush(QColor("#1F1F20")));
     painter.drawPolygon(Icons::ptr()->guiders[impl->_guidersIndex]);
 
     if (impl->_siteRects.size() > 0)

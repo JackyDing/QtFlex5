@@ -24,6 +24,7 @@ public:
     Flex::Direction _direction;
     QList<DockSite*> _dockSites;
     QWidget* _container;
+    bool _locked = false;
 };
 
 void DockSideImpl::hittest(DockSide* self, const QPoint& pos)
@@ -91,6 +92,29 @@ Flex::Direction DockSide::direction() const
     return impl->_direction;
 }
 
+bool DockSide::isLocked() const
+{
+    return impl->_locked;
+}
+
+void DockSide::lockit()
+{
+    impl->_locked = true;
+    for (auto dockSite : impl->_dockSites)
+    {
+        dockSite->lockit();
+    }
+}
+
+void DockSide::unlock()
+{
+    impl->_locked = false;
+    for (auto dockSite : impl->_dockSites)
+    {
+        dockSite->unlock();
+    }
+}
+
 bool DockSide::attachDockSite(DockSite* dockSite)
 {
     doneCurrent();
@@ -101,6 +125,7 @@ bool DockSide::attachDockSite(DockSite* dockSite)
         dockSite->setDockMode(Flex::DockInSideArea);
         dockSite->hide();
         emit dockSiteAttached(this, dockSite);
+        dockSite->deleteLater();
         update();
     }
 
@@ -140,7 +165,7 @@ bool DockSide::detachDockSite(DockSite* dockSite)
 
 QSize DockSide::sizeHint() const
 {
-    return QSize(30, 30);
+    return QSize(26, 30);
 }
 
 void DockSide::setHeadOffset(int offset)
@@ -203,6 +228,10 @@ void DockSide::paintEvent(QPaintEvent*)
 
     int offset = impl->_headOffset;
 
+    QList<QRect> textDec;
+    QList<QPoint> textPos;
+    QList<QString> texts;
+
     for (int i = 0; i < impl->_dockSites.size(); ++i)
     {
         auto dockText = impl->_dockSites[i]->windowTitle();
@@ -211,18 +240,47 @@ void DockSide::paintEvent(QPaintEvent*)
         {
         case Flex::L:
         case Flex::B:
-            pixmapPainter.fillRect(offset, ph - 6, dockRect.width(), 6, impl->_over == i ? QColor("#9BA7B7") : QColor("#465A7D"));
-            pixmapPainter.drawText(offset, ph - dockRect.height(), dockText);
+            textDec << QRect(offset, ph - 6, dockRect.width(), 6);
+            textPos << QPoint(offset, ph - dockRect.height() + 5);
+            texts << dockText;
             break;
         case Flex::T:
         case Flex::R:
-            pixmapPainter.fillRect(offset, 0, dockRect.width(), 6, impl->_over == i ? QColor("#9BA7B7") : QColor("#465A7D"));
-            pixmapPainter.drawText(offset, ph - dockRect.height(), dockText);
+            textDec << QRect(offset, 0, dockRect.width(), 6);
+            textPos << QPoint(offset, 16 + 5);
+            texts << dockText;
             break;
         default:
             break;
         }
         offset += dockRect.width() + impl->_space;
+    }
+
+    for (int i = 0; i < impl->_dockSites.size(); ++i)
+    {
+        if (impl->_over != i)
+        {
+            pixmapPainter.fillRect(textDec[i], QColor("#3F3F46"));
+        }
+    }
+
+    pixmapPainter.setPen(QColor("#F0F0F0"));
+
+    for (int i = 0; i < impl->_dockSites.size(); ++i)
+    {
+        if (impl->_over != i)
+        {
+            pixmapPainter.drawText(textPos[i], texts[i]);
+        }
+    }
+
+    pixmapPainter.setPen(QColor("#007ACC"));
+    pixmapPainter.setBrush(QColor("#007ACC"));
+
+    if (impl->_over >= 0 && impl->_over < impl->_dockSites.size())
+    {
+        pixmapPainter.drawRect(textDec[impl->_over]);
+        pixmapPainter.drawText(textPos[impl->_over], texts[impl->_over]);
     }
 
     pixmapPainter.end();
@@ -338,6 +396,7 @@ void DockSide::doneCurrent()
 
 bool DockSide::load(const QJsonObject& object)
 {
+    impl->_locked = object["locked"].toBool(false);
     setSpace(object["space"].toInt());
     setHeadOffset(object["headOffset"].toInt());
     setTailOffset(object["tailOffset"].toInt());
@@ -354,6 +413,7 @@ bool DockSide::load(const QJsonObject& object)
 
 bool DockSide::save(QJsonObject& object) const
 {
+    object["locked"] = impl->_locked;
     object["space"] = impl->_space;
     object["headOffset"] = impl->_headOffset;
     object["tailOffset"] = impl->_tailOffset;

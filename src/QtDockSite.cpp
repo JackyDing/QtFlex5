@@ -79,6 +79,9 @@ public:
     void adjust(DockSite* self, DockWidget* widget);
 
 public:
+    void showDockPull(DockSite* self);
+
+public:
     bool isTitleBarVisible(DockSite* self, QRect* rect = nullptr) const;
 
 public:
@@ -91,8 +94,9 @@ public:
     DockSiteTabMdi* _tabMdi;
     FlexHelper* _helper = nullptr;
     bool _persistent = false;
-    bool _startDrag;
-    bool _startPull;
+    bool _locked = false;
+    bool _startDrag = false;
+    bool _startPull = false;
     QPoint _startPoint;
     int _titleBarHeight;
 };
@@ -108,9 +112,12 @@ void DockSiteImpl::update(DockSite* self, Flex::DockMode dockMode)
 
     if (isTitleBarVisible(self))
     {
-        if (tempWidget) tempWidget->setWindowTitle(Flex::window()->windowTitle());
+        if (tempWidget)
+        {
+            tempWidget->setWindowTitle(Flex::window()->windowTitle());
+        }
         self->setContentsMargins(0, _titleBarHeight, 0, 0);
-        if (!_helper)
+        if (_helper == nullptr)
         {
             _helper = new FlexHelper(self);
             _helper->setWindowInfo(_titleBarHeight, Qt::Window);
@@ -129,9 +136,12 @@ void DockSiteImpl::update(DockSite* self, Flex::DockMode dockMode)
     }
     else
     {
-        if (tempWidget) tempWidget->setWindowTitle(_tabBar->tabText(_tabBar->currentIndex()));
+        if (tempWidget)
+        {
+            tempWidget->setWindowTitle(_tabBar->tabText(_tabBar->currentIndex()));
+        }
         self->setContentsMargins(0, 0, 0, 0);
-        if (_helper)
+        if (_helper != nullptr)
         {
             _helper->deleteLater(); _helper = nullptr;
         }
@@ -198,12 +208,13 @@ void DockSiteImpl::adjust(DockSite* self, DockWidget* widget)
 
     if (_persistent || !widget || widget->viewMode() == Flex::FileView || widget->viewMode() == Flex::FilePagesView)
     {
-        tabPalette.setColor(QPalette::Active, QPalette::Highlight, QColor("#FFF29D"));
-        tabPalette.setColor(QPalette::Inactive, QPalette::Highlight, QColor("#4D6082"));
-        tabPalette.setColor(QPalette::Active, QPalette::Window, QColor("#5B7199"));
-        tabPalette.setColor(QPalette::Inactive, QPalette::Window, QColor("#364E6F"));
-        tabPalette.setColor(QPalette::Active, QPalette::WindowText, QColor("#000000"));
+        tabPalette.setColor(QPalette::Active, QPalette::Highlight, QColor("#007ACC"));
+        tabPalette.setColor(QPalette::Inactive, QPalette::Highlight, QColor("#444444"));
+        tabPalette.setColor(QPalette::Active, QPalette::Window, QColor("#1C97EA"));
+        tabPalette.setColor(QPalette::Inactive, QPalette::Window, QColor("#2D2D30"));
+        tabPalette.setColor(QPalette::Active, QPalette::WindowText, QColor("#FFFFFF"));
         tabPalette.setColor(QPalette::Inactive, QPalette::WindowText, QColor("#FFFFFF"));
+
         arranger->setContentsMargins(0, 0, 0, 0);
         if (item0 == nullptr)
         {
@@ -217,21 +228,25 @@ void DockSiteImpl::adjust(DockSite* self, DockWidget* widget)
                 arranger->addItem(item1);
                 arranger->addItem(item0);
             }
+            else
+            {
+                arranger->addItem(item0);
+                arranger->addItem(item1);
+            }
         }
-        _tabBar->setTabsClosable(true);
+        _tabBar->setTabsClosable(_locked);
         _tabBar->setShape(QTabBar::RoundedNorth);
-        //_tabBar->setFixedHeight(22);
-        //if (widget) _tabBar->show();
         _tabBar->show();
     }
     else
     {
-        tabPalette.setColor(QPalette::Active, QPalette::Highlight, QColor("#FFFFFF"));
-        tabPalette.setColor(QPalette::Inactive, QPalette::Highlight, QColor("#FFFFFF"));
-        tabPalette.setColor(QPalette::Active, QPalette::Window, QColor("#5B7199"));
-        tabPalette.setColor(QPalette::Inactive, QPalette::Window, QColor("#4D6082"));
-        tabPalette.setColor(QPalette::Active, QPalette::WindowText, QColor("#000000"));
-        tabPalette.setColor(QPalette::Inactive, QPalette::WindowText, QColor("#FFFFFF"));
+        tabPalette.setColor(QPalette::Active, QPalette::Highlight, QColor("#252526"));
+        tabPalette.setColor(QPalette::Inactive, QPalette::Highlight, QColor("#252526"));
+        tabPalette.setColor(QPalette::Active, QPalette::Window, QColor("#3E3E40"));
+        tabPalette.setColor(QPalette::Inactive, QPalette::Window, QColor("#2D2D30"));
+        tabPalette.setColor(QPalette::Active, QPalette::WindowText, QColor("#007ACC"));
+        tabPalette.setColor(QPalette::Inactive, QPalette::WindowText, QColor("#7F8899"));
+
         arranger->setContentsMargins(0, 0, 0, 0);
         if (item0 == nullptr)
         {
@@ -245,16 +260,20 @@ void DockSiteImpl::adjust(DockSite* self, DockWidget* widget)
                 arranger->addItem(item1);
                 arranger->addItem(item0);
             }
+            else
+            {
+                arranger->addItem(item0);
+                arranger->addItem(item1);
+            }
         }
         _tabBar->setTabsClosable(false);
         _tabBar->setShape(QTabBar::RoundedSouth);
-        //_tabBar->setFixedHeight(21);
-        //if (widget) _tabBar->hide();
         _tabBar->hide();
     }
 
     _tabBar->setPalette(tabPalette);
     _tabBar->setDocumentMode(true);
+    _tabBar->setContextMenuPolicy(Qt::CustomContextMenu);
 }
 
 void DockSiteImpl::update(DockSite* self, DockWidget* widget, int method)
@@ -314,6 +333,16 @@ void DockSiteImpl::update(DockSite* self, DockWidget* widget, int method)
                 _viewMode = Flex::FilePagesView;
             }
         }
+    }
+}
+
+void DockSiteImpl::showDockPull(DockSite* self)
+{
+    auto pull = _helper->button(Flex::DockPull);
+
+    if (pull != nullptr)
+    {
+        emit FlexManager::instance()->dockSitePullMenuRequested(pull->mapToGlobal(pull->rect().bottomLeft()), self);
     }
 }
 
@@ -386,6 +415,7 @@ DockSite::DockSite(DockWidget* widget, QSize baseSize, QWidget* parent) : QWidge
     connect(impl->_tabBar, SIGNAL(currentChanged(int)), SLOT(on_tabBar_currentChanged(int)));
     connect(impl->_tabBar, SIGNAL(tabMoved(int, int)), SLOT(on_tabBar_tabMoved(int, int)));
     connect(impl->_tabBar, SIGNAL(tabCloseRequested(int)), SLOT(on_tabBar_tabCloseRequested(int)));
+    connect(impl->_tabBar, SIGNAL(customContextMenuRequested(const QPoint&)), SLOT(on_tabBar_customContextMenuRequested(const QPoint&)));
     connect(impl->_tabMdi, SIGNAL(currentChanged(int)), SLOT(on_tabMdi_currentChanged(int)));
     connect(impl->_tabMdi, SIGNAL(widgetRemoved(int)), SLOT(on_tabMdi_widgetRemoved(int)));
 
@@ -565,6 +595,11 @@ void DockSite::removeWidgetAt(int index)
     impl->_tabBar->closeTab(index);
 }
 
+DockWidget* DockSite::currentWidget() const
+{
+    return qobject_cast<DockWidget*>(impl->_tabMdi->currentWidget());
+}
+
 void DockSite::setCurrentWidget(DockWidget* widget)
 {
     if (impl->_tabMdi->currentWidget() != widget)
@@ -609,6 +644,31 @@ QString DockSite::identifier()
     return parts.join(",");
 }
 
+bool DockSite::isLocked() const
+{
+    return impl->_locked;
+}
+
+void DockSite::lockit()
+{
+    impl->_locked = true;
+    if (impl->_tabBar->shape() == QTabBar::RoundedNorth)
+    {
+        impl->_tabBar->setTabsClosable(false);
+    }
+    update();
+}
+
+void DockSite::unlock()
+{
+    impl->_locked = false;
+    if (impl->_tabBar->shape() == QTabBar::RoundedNorth)
+    {
+        impl->_tabBar->setTabsClosable(true);
+    }
+    update();
+}
+
 bool DockSite::isActive() const
 {
     return impl->_active;
@@ -640,6 +700,8 @@ bool DockSite::load(const QJsonObject& object)
     setWindowTitle(object["windowTitle"].toString());
     setBaseSize(object["baseW"].toInt(0), object["baseH"].toInt(0));
 
+    impl->_locked = object["locked"].toBool(false);
+
     impl->_persistent = object["persistent"].toBool(false);
 
     QJsonArray dockWidgetObjects = object["widgets"].toArray();
@@ -652,11 +714,21 @@ bool DockSite::load(const QJsonObject& object)
 
         QString dockWidgetName = dockWidgetObject["dockWidgetName"].toString();
 
-        DockWidget* dockWidget = FlexManager::instance()->createDockWidget(viewMode, this, Flex::widgetFlags(), dockWidgetName);
+        DockWidget* dockWidget = FlexManager::instance()->dockWidget(dockWidgetName);
+
+        if (dockWidget == nullptr)
+        {
+            dockWidget = FlexManager::instance()->createDockWidget(viewMode, this, Flex::widgetFlags(), dockWidgetName);
+        }
 
         dockWidget->load(dockWidgetObject);
 
         addWidget(dockWidget);
+    }
+
+    if (impl->_tabBar->shape() == QTabBar::RoundedNorth)
+    {
+        impl->_tabBar->setTabsClosable(!impl->_locked);
     }
 
     return true;
@@ -670,6 +742,7 @@ bool DockSite::save(QJsonObject& object) const
     object["windowTitle"] = windowTitle();
     object["baseW"] = baseSize.width();
     object["baseH"] = baseSize.height();
+    object["locked"] = impl->_locked;
 
     object["persistent"] = impl->_persistent;
 
@@ -710,7 +783,6 @@ bool DockSite::event(QEvent* evt)
 
     return QWidget::event(evt);
 }
-
 bool DockSite::eventFilter(QObject* obj, QEvent* evt)
 {
     if (obj == impl->_tabBar)
@@ -719,31 +791,36 @@ bool DockSite::eventFilter(QObject* obj, QEvent* evt)
         {
         case QEvent::MouseButtonPress:
         {
-            QMouseEvent* mouse = static_cast<QMouseEvent*>(evt);
-
-            if (mouse->button() == Qt::LeftButton && impl->_tabBar->tabAt(mouse->pos()) != -1)
+            if (!impl->_locked)
             {
-                auto tempWidget = flexWidget();
+                QMouseEvent* mouse = static_cast<QMouseEvent*>(evt);
 
-                if (!tempWidget->isFloating() || impl->_tabBar->count() > 1)
+                if (mouse->button() == Qt::LeftButton && impl->_tabBar->tabAt(mouse->pos()) != -1)
                 {
-                    impl->_startPull = true;
-                    impl->_startPoint = mouse->pos();
-                    impl->_tabBar->grabMouse();
+                    auto tempWidget = flexWidget();
+
+                    if (!tempWidget->isFloating() || impl->_tabBar->count() > 1)
+                    {
+                        impl->_startPull = true;
+                        impl->_startPoint = mouse->pos();
+                        impl->_tabBar->grabMouse();
+                    }
                 }
             }
-
             break;
         }
         case QEvent::MouseButtonRelease:
         {
-            impl->_tabBar->releaseMouse();
-            impl->_startPull = false;
+            if (!impl->_locked && impl->_startPull)
+            {
+                impl->_tabBar->releaseMouse();
+                impl->_startPull = false;
+            }
             break;
         }
         case QEvent::MouseMove:
         {
-            if (impl->_startPull)
+            if (!impl->_locked && impl->_startPull)
             {
                 QMouseEvent* mouse = static_cast<QMouseEvent*>(evt);
 
@@ -776,6 +853,7 @@ bool DockSite::eventFilter(QObject* obj, QEvent* evt)
                 flexWidget->show();
 
                 impl->update(this, dockWidget, 1);
+                impl->adjust(this, dockWidget);
 
                 QApplication::sendPostedEvents();
 
@@ -817,8 +895,8 @@ void DockSite::paintEvent(QPaintEvent*)
     {
         if (impl->_helper)
         {
-            impl->_helper->buttons()->show();
-            impl->_helper->extents()->show();
+            impl->_helper->buttons()->setVisible(!impl->_locked);
+            impl->_helper->extents()->setVisible(!impl->_locked);
         }
 
         QStyleOptionTitleBar titleOption;
@@ -829,11 +907,11 @@ void DockSite::paintEvent(QPaintEvent*)
 
         bool active = impl->_active;
 
-        painter.fillRect(titleBarRect, QColor(active ? "#fff29d" : "#4D6082"));
+        painter.fillRect(titleBarRect, QColor(active ? "#007ACC" : "#2D2D30"));
 
         QRect ir = style()->subControlRect(QStyle::CC_TitleBar, &titleOption, QStyle::SC_TitleBarLabel, this);
 
-        painter.setPen(active ? Qt::black : Qt::white);
+        painter.setPen(QColor(active ? "#FFFFFF" : "#7F8899"));
 
         painter.drawText(8, (impl->_titleBarHeight - ir.height()) / 2, ir.width() - 2, ir.height(), Qt::AlignLeft | Qt::AlignVCenter | Qt::TextSingleLine, titleOption.text);
     }
@@ -874,6 +952,11 @@ void DockSite::closeEvent(QCloseEvent* evt)
 
 void DockSite::mousePressEvent(QMouseEvent* evt)
 {
+    if (impl->_locked)
+    {
+        return;
+    }
+
     QRect titleBarRect;
 
     if (evt->button() == Qt::LeftButton && impl->isTitleBarVisible(this, &titleBarRect) && !isTopLevel())
@@ -894,6 +977,11 @@ void DockSite::mousePressEvent(QMouseEvent* evt)
 
 void DockSite::mouseMoveEvent(QMouseEvent* evt)
 {
+    if (impl->_locked)
+    {
+        return;
+    }
+
     QPoint offset = evt->pos() - impl->_startPoint;
 
     if (impl->_startDrag)
@@ -937,16 +1025,29 @@ void DockSite::mouseMoveEvent(QMouseEvent* evt)
 #else
         QApplication::sendEvent(flexWidget, new QMouseEvent(QEvent::MouseButtonPress, flexWidget->mapFromGlobal(pos), pos, Qt::LeftButton, evt->buttons(), evt->modifiers()));
 #endif
+        }
     }
-}
 
-void DockSite::mouseReleaseEvent(QMouseEvent*)
+void DockSite::mouseReleaseEvent(QMouseEvent* evt)
 {
-    impl->_startDrag = false;
+    if (!impl->_locked)
+    {
+        impl->_startDrag = false;
+    }
+
+    if (evt->button() == Qt::RightButton)
+    {
+        emit FlexManager::instance()->dockSiteItemMenuRequested(evt->globalPos(), this);
+    }
 }
 
 void DockSite::mouseDoubleClickEvent(QMouseEvent* evt)
 {
+    if (impl->_locked)
+    {
+        return;
+    }
+
     QRect titleBarRect;
 
     if (evt->button() == Qt::LeftButton && impl->isTitleBarVisible(this, &titleBarRect) && titleBarRect.contains(evt->pos()))
@@ -981,11 +1082,16 @@ void DockSite::on_tabBar_currentChanged(int index)
     }
 
     impl->_tabMdi->blockSignals(true);
-    impl->_tabMdi->setCurrentIndex(index); 
+    impl->_tabMdi->setCurrentIndex(index);
     impl->_tabMdi->blockSignals(false);
 
     if (tempWidget)
     {
+        if (index >= 0 && parentWidget() != tempWidget->sideContainer())
+        {
+            tempWidget->setCurrent(this);
+        }
+
         if (impl->isTitleBarVisible(this))
         {
             tempWidget->setWindowTitle(Flex::window()->windowTitle());
@@ -997,6 +1103,8 @@ void DockSite::on_tabBar_currentChanged(int index)
 
         tempWidget->update();
     }
+
+    emit FlexManager::instance()->dockWidgetActivated(this->currentWidget());
 
     update();
 }
@@ -1012,6 +1120,11 @@ void DockSite::on_tabBar_tabMoved(int from, int to)
 
 void DockSite::on_tabBar_tabCloseRequested(int index)
 {
+    if (impl->_locked)
+    {
+        return;
+    }
+
     auto tempWidget = flexWidget();
 
     auto widget = static_cast<DockWidget*>(impl->_tabMdi->widget(index));
@@ -1024,7 +1137,7 @@ void DockSite::on_tabBar_tabCloseRequested(int index)
     impl->_tabMdi->removeWidget(widget);
     impl->_tabMdi->blockSignals(false);
 
-    widget->setParent(nullptr); 
+    widget->setParent(nullptr);
 
     widget->close();
 
@@ -1046,6 +1159,14 @@ void DockSite::on_tabBar_tabCloseRequested(int index)
     update();
 }
 
+void DockSite::on_tabBar_customContextMenuRequested(const QPoint& pos)
+{
+    if (impl->_tabBar->tabAt(pos) >= 0)
+    {
+        emit FlexManager::instance()->dockSiteItemMenuRequested(impl->_tabBar->mapToGlobal(pos), this);
+    }
+}
+
 void DockSite::on_tabMdi_currentChanged(int index)
 {
     auto tempWidget = flexWidget();
@@ -1065,6 +1186,11 @@ void DockSite::on_tabMdi_currentChanged(int index)
 
     if (tempWidget)
     {
+        if (index >= 0 && parentWidget() != tempWidget->sideContainer())
+        {
+            tempWidget->setCurrent(this);
+        }
+
         if (impl->isTitleBarVisible(this))
         {
             tempWidget->setWindowTitle(Flex::window()->windowTitle());
@@ -1076,6 +1202,8 @@ void DockSite::on_tabMdi_currentChanged(int index)
 
         tempWidget->update();
     }
+
+    emit FlexManager::instance()->dockWidgetActivated(this->currentWidget());
 
     update();
 }
@@ -1106,8 +1234,13 @@ void DockSite::on_tabMdi_widgetRemoved(int index)
     update();
 }
 
-void DockSite::on_titleBar_buttonClicked(Flex::Button button, bool *accepted)
+void DockSite::on_titleBar_buttonClicked(Flex::Button button, bool* accepted)
 {
+    if (impl->_locked)
+    {
+        *accepted = true; return;
+    }
+
     switch (button)
     {
     case Flex::AutoHide:
@@ -1123,7 +1256,7 @@ void DockSite::on_titleBar_buttonClicked(Flex::Button button, bool *accepted)
         }
         break;
     case Flex::DockPull:
-        flexWidget()->showSiteDockPull(this);
+        impl->showDockPull(this);
         break;
     default:
         break;

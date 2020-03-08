@@ -16,6 +16,13 @@
 #include <qt_windows.h>
 #endif
 
+namespace
+{
+    int ViewModeType = qRegisterMetaType<Flex::ViewMode>();
+    int DockModeType = qRegisterMetaType<Flex::DockMode>();
+    int DockAreaType = qRegisterMetaType<Flex::DockArea>();
+}
+
 int Flex::Update = QEvent::registerEventType();
 
 #ifdef Q_OS_WIN
@@ -34,16 +41,19 @@ WId topLevelWindowAt(QWidget* widget, const QPoint& pos)
 }
 #endif
 
-DockSite* getDockSite(QWidget* widget)
+namespace
 {
-    for (DockSite* site = nullptr; widget && !site; widget = widget->parentWidget())
+    DockSite* getDockSite(QWidget* widget)
     {
-        if ((site = qobject_cast<DockSite*>(widget)) != nullptr)
+        for (DockSite* site = nullptr; widget && !site; widget = widget->parentWidget())
         {
-            return site;
+            if ((site = qobject_cast<DockSite*>(widget)) != nullptr)
+            {
+                return site;
+            }
         }
+        return nullptr;
     }
-    return nullptr;
 }
 
 namespace
@@ -62,7 +72,7 @@ public:
     }
 
 public:
-    bool nativeEventFilter(const QByteArray &eventType, void *message, long *result);
+    bool nativeEventFilter(const QByteArray& eventType, void* message, long* result);
 
 public:
     QString flexWidgetName(DockWidget* dockWidget) const;
@@ -82,10 +92,11 @@ public:
     QList<QIcon> _buttonIcons;
     SnapshotList _snapshotList;
     SnapshotDict _snapshotDict;
-    bool _ready;
+    bool _ready = false;
+    bool _locked = false;
 };
 
-bool FlexManagerImpl::nativeEventFilter(const QByteArray &eventType, void *message, long *result)
+bool FlexManagerImpl::nativeEventFilter(const QByteArray&, void*, long*)
 {
     return false;
 }
@@ -137,17 +148,19 @@ bool FlexManagerImpl::equalIdentifer(const QString& id1, const QString& id2) con
 FlexManager::FlexManager() : impl(new FlexManagerImpl)
 {
     Q_ASSERT(qApp != nullptr);
+
     connect(qApp, SIGNAL(focusChanged(QWidget*, QWidget*)), SLOT(on_app_focusChanged(QWidget*, QWidget*)));
-    connect(this, SIGNAL(guiderHover(FlexWidget*, QWidget*)), SLOT(on_flexWidget_guiderHover(FlexWidget*, QWidget*)));
+    connect(this, SIGNAL(guiderOver(FlexWidget*, QWidget*)), SLOT(on_flexWidget_guiderOver(FlexWidget*, QWidget*)));
     connect(this, SIGNAL(guiderShow(FlexWidget*, QWidget*)), SLOT(on_flexWidget_guiderShow(FlexWidget*, QWidget*)));
     connect(this, SIGNAL(guiderHide(FlexWidget*, QWidget*)), SLOT(on_flexWidget_guiderHide(FlexWidget*, QWidget*)));
     connect(this, SIGNAL(guiderDrop(FlexWidget*, DockWidget*)), SLOT(on_flexWidget_guiderDrop(FlexWidget*, DockWidget*)));
     connect(this, SIGNAL(guiderDrop(FlexWidget*, FlexWidget*)), SLOT(on_flexWidget_guiderDrop(FlexWidget*, FlexWidget*)));
+
     QPixmap extentsPixmap(":/Resources/extents.png");
     for (int i = 0; i < 3; i++)
     {
         QIcon icon;
-        icon.addPixmap(extentsPixmap.copy(i * 16,  0, 16, 16), QIcon::Active, QIcon::On);
+        icon.addPixmap(extentsPixmap.copy(i * 16, 0, 16, 16), QIcon::Active, QIcon::On);
         icon.addPixmap(extentsPixmap.copy(i * 16, 16, 16, 16), QIcon::Active, QIcon::Off);
         icon.addPixmap(extentsPixmap.copy(i * 16, 32, 16, 16), QIcon::Normal, QIcon::Off);
         impl->_buttonIcons.append(icon);
@@ -156,18 +169,17 @@ FlexManager::FlexManager() : impl(new FlexManagerImpl)
     for (int i = 0; i < 4; i++)
     {
         QIcon icon;
-        icon.addPixmap(buttonsPixmap.copy(i * 16,  0, 16, 16), QIcon::Active, QIcon::On);
+        icon.addPixmap(buttonsPixmap.copy(i * 16, 0, 16, 16), QIcon::Active, QIcon::On);
         icon.addPixmap(buttonsPixmap.copy(i * 16, 16, 16, 16), QIcon::Active, QIcon::Off);
         icon.addPixmap(buttonsPixmap.copy(i * 16, 32, 16, 16), QIcon::Normal, QIcon::Off);
         impl->_buttonIcons.append(icon);
     }
-    
+
     qApp->installNativeEventFilter(impl.data());
 }
 
 FlexManager::~FlexManager()
 {
-
 }
 
 FlexManager* FlexManager::instance()
@@ -185,7 +197,7 @@ FlexWidget* FlexManager::createFlexWidget(Flex::ViewMode viewMode, QWidget* pare
 #endif
     FlexWidget* widget = new FlexWidget(viewMode, parent, flags);
     widget->setObjectName(flexWidgetName.isEmpty() ? QUuid::createUuid().toString().toUpper() : flexWidgetName);
-    widget->setWindowTitle(flexWidgetName);
+    //widget->setWindowTitle(flexWidgetName);
     connect(widget, SIGNAL(destroyed(QObject*)), SLOT(on_flexWidget_destroyed(QObject*)));
     connect(widget, SIGNAL(enterMove(QObject*)), SLOT(on_flexWidget_enterMove(QObject*)));
     connect(widget, SIGNAL(leaveMove(QObject*)), SLOT(on_flexWidget_leaveMove(QObject*)));
@@ -207,7 +219,7 @@ DockWidget* FlexManager::createDockWidget(Flex::ViewMode viewMode, QWidget* pare
 #endif
     DockWidget* widget = new DockWidget(viewMode, parent, flags);
     widget->setObjectName(dockWidgetName.isEmpty() ? QUuid::createUuid().toString().toUpper() : dockWidgetName);
-    widget->setWindowTitle(dockWidgetName);
+    //widget->setWindowTitle(dockWidgetName);
     connect(widget, SIGNAL(destroyed(QObject*)), SLOT(on_dockWidget_destroyed(QObject*)));
     connect(widget, SIGNAL(enterMove(QObject*)), SLOT(on_dockWidget_enterMove(QObject*)));
     connect(widget, SIGNAL(leaveMove(QObject*)), SLOT(on_dockWidget_leaveMove(QObject*)));
@@ -268,6 +280,29 @@ QIcon FlexManager::icon(Flex::Button button)
     return impl->_buttonIcons[button];
 }
 
+bool FlexManager::isLocked() const
+{
+    return impl->_locked;
+}
+
+void FlexManager::lockit()
+{
+    impl->_locked = true;
+    for (auto flexWidget : impl->_flexWidgets)
+    {
+        flexWidget->lockit();
+    }
+}
+
+void FlexManager::unlock()
+{
+    impl->_locked = false;
+    for (auto flexWidget : impl->_flexWidgets)
+    {
+        flexWidget->unlock();
+    }
+}
+
 void FlexManager::close()
 {
     for (auto iter = impl->_dockWidgets.begin(); iter != impl->_dockWidgets.end(); ++iter)
@@ -288,12 +323,29 @@ void FlexManager::close()
     impl->_flexWidgets.clear();
 }
 
+void FlexManager::clear()
+{
+    for (auto iter = impl->_dockWidgets.begin(); iter != impl->_dockWidgets.end(); ++iter)
+    {
+        delete (*iter);
+    }
+
+    for (auto iter = impl->_flexWidgets.begin(); iter != impl->_flexWidgets.end(); ++iter)
+    {
+        delete (*iter);
+    }
+
+    impl->_dockWidgets.clear();
+    impl->_flexWidgets.clear();
+}
+
 bool FlexManager::load(const QByteArray& content, const QMap<QString, QWidget*>& parents)
 {
-    close();
+    clear();
 
     QJsonObject object = QJsonDocument::fromJson(content).object();
 
+    impl->_locked = object["locked"].toBool(false);
     QJsonArray flexWidgetObjects = object["flexWidgets"].toArray();
 
     for (int i = 0; i < flexWidgetObjects.size(); ++i)
@@ -310,10 +362,12 @@ bool FlexManager::load(const QByteArray& content, const QMap<QString, QWidget*>&
         flexWidget->load(flexWidgetObject);
     }
 
+    emit loadFinished();
+
     return true;
 }
 
-QByteArray FlexManager::save() const
+QByteArray FlexManager::save()
 {
     QJsonObject object;
 
@@ -335,7 +389,10 @@ QByteArray FlexManager::save() const
         flexWidgetObjects.append(flexWidgetObject);
     }
 
+    object["locked"] = impl->_locked;
     object["flexWidgets"] = flexWidgetObjects;
+
+    emit saveFinished();
 
 #ifdef _DEBUG
     return QJsonDocument(object).toJson(QJsonDocument::Indented);
@@ -386,7 +443,7 @@ bool FlexManager::snapshot(DockWidget* dockWidget)
 
     impl->_snapshotDict[dockWidget->objectName()] = std::make_tuple(flexWidget->objectName(), dockWidgetPath, key);
 
-    foreach (auto tempWidget, dockWidgets)
+    for (auto tempWidget : dockWidgets)
     {
         if (tempWidget == dockWidget)
         {
@@ -436,7 +493,7 @@ bool FlexManager::snapshot(FlexWidget* flexWidget)
 
     SnapshotDict::iterator item;
 
-    foreach(auto tempWidget, dockWidgets)
+    for (auto tempWidget : dockWidgets)
     {
         QString dockWidgetPath = tempWidget->identifier();
 
@@ -501,7 +558,7 @@ bool FlexManager::restore(const QString& name)
         flexWidget->restoreGeometry(QByteArray::fromBase64(flexWidgetObject["geometry"].toString().toLatin1()));
     }
 
-    bool result =  flexWidget->restore(content, dockWidgetPath);
+    bool result = flexWidget->restore(content, dockWidgetPath);
 
     impl->_snapshotDict.remove(name);
 
@@ -579,7 +636,11 @@ void FlexManager::on_flexWidget_destroyed(QObject* widget)
 
 void FlexManager::on_flexWidget_guiderShow(FlexWidget* flexWidget, QWidget* widget)
 {
-    Q_ASSERT(widget != nullptr); 
+    if (impl->_locked)
+    {
+        return;
+    }
+    Q_ASSERT(widget != nullptr);
 #ifdef Q_OS_WIN
     SetWindowPos(reinterpret_cast<HWND>(flexWidget->window()->effectiveWinId()), reinterpret_cast<HWND>(widget->effectiveWinId()), 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE | SWP_NOACTIVATE);
 #else
@@ -595,18 +656,31 @@ void FlexManager::on_flexWidget_guiderShow(FlexWidget* flexWidget, QWidget* widg
 
 void FlexManager::on_flexWidget_guiderHide(FlexWidget* flexWidget, QWidget* widget)
 {
+    if (impl->_locked)
+    {
+        return;
+    }
     Q_ASSERT(widget != nullptr);
     flexWidget->hideGuider(widget);
 }
 
-void FlexManager::on_flexWidget_guiderHover(FlexWidget* flexWidget, QWidget* widget)
+void FlexManager::on_flexWidget_guiderOver(FlexWidget* flexWidget, QWidget* widget)
 {
+    if (impl->_locked)
+    {
+        return;
+    }
     Q_ASSERT(widget != nullptr);
-    flexWidget->hoverGuider(widget);
+    flexWidget->overGuider(widget);
 }
 
 void FlexManager::on_flexWidget_guiderDrop(FlexWidget* flexWidget, DockWidget* widget)
 {
+    if (impl->_locked)
+    {
+        return;
+    }
+
     Q_ASSERT(widget != nullptr);
     if (flexWidget->dropGuider(widget))
     {
@@ -628,6 +702,11 @@ void FlexManager::on_flexWidget_guiderDrop(FlexWidget* flexWidget, DockWidget* w
 
 void FlexManager::on_flexWidget_guiderDrop(FlexWidget* flexWidget, FlexWidget* widget)
 {
+    if (impl->_locked)
+    {
+        return;
+    }
+
     Q_ASSERT(widget != nullptr);
     if (flexWidget->dropGuider(widget))
     {
@@ -649,12 +728,15 @@ void FlexManager::on_flexWidget_guiderDrop(FlexWidget* flexWidget, FlexWidget* w
 
 void FlexManager::on_flexWidget_enterMove(QObject*)
 {
-    impl->_ready = true;
+    if (!impl->_locked)
+    {
+        impl->_ready = true;
+    }
 }
 
 void FlexManager::on_flexWidget_leaveMove(QObject* object)
 {
-    if (!impl->_ready)
+    if (!impl->_ready || impl->_locked)
     {
         return;
     }
@@ -716,7 +798,7 @@ void FlexManager::on_flexWidget_leaveMove(QObject* object)
 
 void FlexManager::on_flexWidget_moving(QObject* object)
 {
-    if (!impl->_ready)
+    if (!impl->_ready || impl->_locked)
     {
         return;
     }
@@ -755,7 +837,7 @@ void FlexManager::on_flexWidget_moving(QObject* object)
             {
                 if (flexWidget->isGuiderVisible())
                 {
-                    emit guiderHover(flexWidget, widget);
+                    emit guiderOver(flexWidget, widget);
                 }
             }
             else
@@ -777,12 +859,15 @@ void FlexManager::on_flexWidget_moving(QObject* object)
 
 void FlexManager::on_dockWidget_enterMove(QObject*)
 {
-    impl->_ready = true;
+    if (!impl->_locked)
+    {
+        impl->_ready = true;
+    }
 }
 
 void FlexManager::on_dockWidget_leaveMove(QObject* object)
 {
-    if (!impl->_ready)
+    if (!impl->_ready || impl->_locked)
     {
         return;
     }
@@ -839,7 +924,7 @@ void FlexManager::on_dockWidget_leaveMove(QObject* object)
 
 void FlexManager::on_dockWidget_moving(QObject* object)
 {
-    if (!impl->_ready)
+    if (!impl->_ready || impl->_locked)
     {
         return;
     }
@@ -873,7 +958,7 @@ void FlexManager::on_dockWidget_moving(QObject* object)
             {
                 if (flexWidget->isGuiderVisible())
                 {
-                    emit guiderHover(flexWidget, widget);
+                    emit guiderOver(flexWidget, widget);
                 }
             }
             else
@@ -915,6 +1000,10 @@ void FlexManager::on_app_focusChanged(QWidget* old, QWidget* now)
             if (nowDockSite->isActive())
             {
                 emit dockSiteActivated(nowDockSite);
+            }
+            if (nowDockSite->isActive())
+            {
+                emit dockWidgetActivated(nowDockSite->currentWidget());
             }
         }
     }

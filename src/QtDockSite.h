@@ -39,6 +39,9 @@ public:
     int indexOf(DockWidget* widget) const;
 
 public:
+    DockWidget* currentWidget() const;
+
+public:
     QList<DockWidget*> widgets() const;
 
 public:
@@ -64,6 +67,11 @@ public:
 
 public:
     QString identifier();
+
+public:
+    bool isLocked() const;
+    void lockit();
+    void unlock();
 
 public:
     bool isActive() const;
@@ -94,6 +102,7 @@ private Q_SLOTS:
     void on_tabBar_currentChanged(int index);
     void on_tabBar_tabMoved(int from, int to);
     void on_tabBar_tabCloseRequested(int index);
+    void on_tabBar_customContextMenuRequested(const QPoint&);
     void on_tabMdi_currentChanged(int index);
     void on_tabMdi_widgetRemoved(int index);
     void on_titleBar_buttonClicked(Flex::Button, bool*);

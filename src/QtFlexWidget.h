@@ -46,9 +46,14 @@ public:
     void setCurrent(DockSite*);
 
 public:
-    bool addDockSite(DockSite* dockSite, Flex::DockArea area = Flex::M, int siteIndex = -1);
-    bool addDockWidget(DockWidget* widget, Flex::DockArea area = Flex::M, int siteIndex = -1);
-    bool addFlexWidget(FlexWidget* widget, Flex::DockArea area = Flex::M, int siteIndex = -1);
+    int findSiteIndex(Flex::ViewMode viewMode = Flex::HybridView, int which = 0) const;
+
+public:
+    bool addDockSite(DockSite* dockSite, Flex::DockArea area, int siteIndex = -1);
+    bool addDockWidget(DockWidget* widget, Flex::DockArea area, int siteIndex = -1);
+    bool addFlexWidget(FlexWidget* widget, Flex::DockArea area, int siteIndex = -1);
+    bool addDockWidget(DockWidget* widget);
+    bool addFlexWidget(FlexWidget* widget);
 
 public:
     bool removeDockSite(DockSite* dockSite);
@@ -80,19 +85,22 @@ public:
 public:
     bool isFloating() const;
 
+    bool isLocked() const;
+    void lockit();
+    void unlock();
+
 public:
     void makeSiteAutoHide(DockSite* dockSite);
     void makeSiteDockShow(DockSite* dockSite);
-    void showSiteDockPull(DockSite* dockSite);
 
 public:
     bool load(const QJsonObject& object);
 
 public:
-    bool save(QJsonObject& object) const;
+    bool save(QJsonObject& object);
 
 public:
-    QByteArray snapshot() const;
+    QByteArray snapshot();
 
 public:
     bool restore(const QByteArray& snapshot, const QString& identifer);
@@ -101,7 +109,7 @@ protected:
     bool event(QEvent* evt);
     void paintEvent(QPaintEvent* evt);
     void resizeEvent(QResizeEvent*);
-    bool nativeEvent(const QByteArray& eventType, void * message, long *result);
+    bool nativeEvent(const QByteArray& eventType, void* message, long* result);
 
 private:
     bool isGuiderExists() const;
@@ -112,7 +120,7 @@ private:
 private:
     void showGuider(QWidget* widget);
     void hideGuider(QWidget* widget);
-    void hoverGuider(QWidget* widget);
+    void overGuider(QWidget* widget);
     bool dropGuider(DockWidget* widget);
     bool dropGuider(FlexWidget* widget);
 

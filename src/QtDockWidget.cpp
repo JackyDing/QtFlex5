@@ -24,7 +24,7 @@ class DockWidgetImpl
 public:
     DockWidgetImpl() : _active(false), _helper(nullptr)
     {
-        _background.setRgbF(1.0f * qrand() / RAND_MAX, 1.0f * qrand() / RAND_MAX, 1.0f * qrand() / RAND_MAX);
+        _background.setRgb(30, 30, 30);
         _dockFeatures = Flex::AllowDockAsNorthTabPage | Flex::AllowDockAsSouthTabPage;
         _siteFeatures = Flex::AllowDockAsNorthTabPage | Flex::AllowDockAsSouthTabPage;
     }
@@ -38,11 +38,14 @@ public:
 public:
     bool _active;
     QColor _background;
+    QSize _sizeHint;
     Flex::ViewMode _viewMode;
     Flex::Features _dockFeatures;
     Flex::Features _siteFeatures;
     QWidget* _widget;
     QString _flexWidgetName;
+    QString _majorTitle;
+    QString _minorTitle;
     QVBoxLayout* _layout;
     FlexHelper* _helper;
     int _titleBarHeight;
@@ -55,19 +58,19 @@ void DockWidgetImpl::update(DockWidget* self)
     switch (_viewMode)
     {
     case Flex::ToolView:
-        palette.setColor(QPalette::Active, self->backgroundRole(), QColor("#FFF29D"));
+        palette.setColor(QPalette::Active, self->backgroundRole(), QColor("#2D2D30"));
         palette.setColor(QPalette::Inactive, self->backgroundRole(), QColor("#4D6082"));
-        palette.setColor(QPalette::Active, QPalette::Highlight, QColor("#FFF29D"));
+        palette.setColor(QPalette::Active, QPalette::Highlight, QColor("#2D2D30"));
         palette.setColor(QPalette::Inactive, QPalette::Highlight, QColor("#4D6082"));
-        palette.setColor(QPalette::Active, self->foregroundRole(), QColor("#000000"));
-        palette.setColor(QPalette::Inactive, self->foregroundRole(), QColor("#FFFFFF"));
+        palette.setColor(QPalette::Active, self->foregroundRole(), QColor("#FFFFFF"));
+        palette.setColor(QPalette::Inactive, self->foregroundRole(), QColor("#7F8899"));
         self->setDockFeatures(Flex::AllowDockAsNorthTabPage | Flex::AllowDockAsSouthTabPage);
         self->setSiteFeatures(Flex::AllowDockAsSouthTabPage);
         break;
     case Flex::FileView:
-        palette.setColor(QPalette::All, self->backgroundRole(), QColor("#293955"));
-        palette.setColor(QPalette::Active, QPalette::Highlight, QColor("#293955"));
-        palette.setColor(QPalette::Inactive, QPalette::Highlight, QColor("#293955"));
+        palette.setColor(QPalette::All, self->backgroundRole(), QColor("#444444"));
+        palette.setColor(QPalette::Active, QPalette::Highlight, QColor("#444444"));
+        palette.setColor(QPalette::Inactive, QPalette::Highlight, QColor("#444444"));
         palette.setColor(QPalette::Active, self->foregroundRole(), QColor("#FFFFFF"));
         palette.setColor(QPalette::Inactive, self->foregroundRole(), QColor("#7F8899"));
         self->setDockFeatures(Flex::AllowDockAsNorthTabPage);
@@ -139,17 +142,15 @@ DockWidget::DockWidget(Flex::ViewMode viewMode, QWidget* parent, Qt::WindowFlags
     setFocusPolicy(Qt::StrongFocus);
     setProperty("Flex", true);
 
-    impl->_widget = new QWidget(this);
+    impl->_widget = nullptr;
 
     impl->_viewMode = viewMode;
 
     impl->update(this);
 
     impl->_layout = new QVBoxLayout(this);
-    impl->_layout->setContentsMargins(0, 0, 0, 0);
+    impl->_layout->setContentsMargins(1, 1, 1, 1);
     impl->_layout->setSpacing(0);
-
-    impl->_layout->addWidget(impl->_widget);
 }
 
 DockWidget::~DockWidget()
@@ -173,7 +174,7 @@ bool DockWidget::event(QEvent* evt)
     return QWidget::event(evt);
 }
 
-bool DockWidget::nativeEvent(const QByteArray& eventType, void *message, long *result)
+bool DockWidget::nativeEvent(const QByteArray& eventType, void* message, long* result)
 {
     if (impl->_helper && impl->_helper->nativeEvent(eventType, message, result))
     {
@@ -189,7 +190,9 @@ void DockWidget::paintEvent(QPaintEvent*)
 {
     QStylePainter painter(this);
 
-    painter.fillRect(rect().adjusted(5, 5, -5, -5), impl->_background);
+    QRect region = rect();
+
+    painter.fillRect(region, impl->_background);
 
     QRect titleBarRect;
 
@@ -241,12 +244,23 @@ void DockWidget::paintEvent(QPaintEvent*)
 
 void DockWidget::closeEvent(QCloseEvent*)
 {
-    
+}
+
+void DockWidget::setSizeHint(const QSize& size)
+{
+    impl->_sizeHint = size;
 }
 
 QSize DockWidget::sizeHint() const
 {
-    return isFloating() ? QSize(640, 480) : QWidget::sizeHint();
+    if (impl->_sizeHint.isEmpty())
+    {
+        return isFloating() ? QSize(640, 480) : QWidget::sizeHint();
+    }
+    else
+    {
+        return impl->_sizeHint;
+    }
 }
 
 QSize DockWidget::minimumSizeHint() const
@@ -286,6 +300,26 @@ Flex::Features DockWidget::siteFeatures() const
 void DockWidget::setSiteFeatures(Flex::Features features)
 {
     impl->_siteFeatures = features;
+}
+
+QString DockWidget::majorTitle() const
+{
+    return impl->_majorTitle;
+}
+
+void DockWidget::setMajorTitle(const QString& title)
+{
+    impl->_majorTitle = title;
+}
+
+QString DockWidget::minorTitle() const
+{
+    return impl->_minorTitle;
+}
+
+void DockWidget::setMinorTitle(const QString& title)
+{
+    impl->_minorTitle = title;
 }
 
 DockSite* DockWidget::dockSite() const
@@ -387,7 +421,10 @@ void DockWidget::setWidget(QWidget* widget)
             delete impl->_layout->takeAt(0);
         }
 
-        impl->_widget->deleteLater();
+        if (impl->_widget)
+        {
+            impl->_widget->deleteLater();
+        }
 
         impl->_layout->addWidget(widget);
 
@@ -435,16 +472,22 @@ bool DockWidget::isActive() const
 
 bool DockWidget::load(const QJsonObject& object)
 {
-    setWindowTitle(object["dockWidgetName"].toString());
+    setObjectName(object["dockWidgetName"].toString());
+    setMajorTitle(object["dockWidgetMajorTitle"].toString());
+    setMinorTitle(object["dockWidgetMinorTitle"].toString());
+    setWindowTitle(object["windowTitle"].toString());
     setViewMode((Flex::ViewMode)object["viewMode"].toInt());
     setDockFeatures((Flex::Features)object["dockFeatures"].toInt());
     setSiteFeatures((Flex::Features)object["siteFeatures"].toInt());
     return true;
 }
 
-bool DockWidget::save(QJsonObject& object) const
+bool DockWidget::save(QJsonObject& object)
 {
-    object["dockWidgetName"] = windowTitle();
+    object["dockWidgetName"] = objectName();
+    object["windowTitle"] = windowTitle();
+    object["dockWidgetMajorTitle"] = majorTitle();
+    object["dockWidgetMinorTitle"] = minorTitle();
     object["viewMode"] = (int)viewMode();
     object["dockFeatures"] = (int)dockFeatures();
     object["siteFeatures"] = (int)siteFeatures();
